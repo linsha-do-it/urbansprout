@@ -13,12 +13,12 @@ import {
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDyyL7LDD2DeZmfetNvzdY8QZ5-eUJqHwU",
-  authDomain: "urbansprout-bc137.firebaseapp.com",
-  projectId: "urbansprout-bc137",
-  storageBucket: "urbansprout-bc137.firebasestorage.app",
-  messagingSenderId: "793698516798",
-  appId: "1:793698516798:web:e87815785ae0b3575d766f"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDyyL7LDD2DeZmfetNvzdY8QZ5-eUJqHwU",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "urbansprout-bc137.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "urbansprout-bc137",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "urbansprout-bc137.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "793698516798",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:793698516798:web:e87815785ae0b3575d766f"
 };
 
 // Initialize Firebase
