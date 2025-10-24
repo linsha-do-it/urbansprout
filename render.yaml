@@ -1,14 +1,16 @@
 services:
-  # Frontend Service - Web Service with Express server for routing
-  - type: web
+  # Frontend Service - Static Site configuration
+  - type: static
     name: urbansprout-frontend
-    buildCommand: npm run build
-    startCommand: npm start
+    buildCommand: cd client && npm install && npm run build
+    staticPublishPath: ./client/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: "3000"
       - key: VITE_API_BASE_URL
         value: https://urbansprout-backend.onrender.com/api
       - key: VITE_FIREBASE_API_KEY
