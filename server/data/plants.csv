@@ -1,0 +1,58 @@
+name,category,type,space_needed,sunlight_requirement,growing_time_days,season,indoor_suitable,container_friendly,quick_growing,salad_suitable,smoothie_suitable,description,growing_tips
+Basil,Herb,Leafy,Small,Full Sun,60-90,Summer,Fall,Yes,Yes,Yes,Yes,Yes,Aromatic herb perfect for cooking and garnishing,Keep soil moist and pinch flowers to encourage leaf growth
+Mint,Herb,Leafy,Small,Partial Shade,45-60,Spring,Fall,Yes,Yes,Yes,Yes,Yes,Refreshing herb great for teas and cocktails,Plant in containers to prevent spreading
+Cilantro,Herb,Leafy,Small,Partial Shade,30-45,Spring,Fall,Yes,Yes,Yes,Yes,No,Essential for Mexican and Asian cuisine,Harvest frequently to prevent bolting
+Parsley,Herb,Leafy,Small,Partial Shade,70-90,Spring,Fall,Yes,Yes,No,Yes,No,Rich in vitamins and minerals,Trim outer leaves to encourage new growth
+Oregano,Herb,Leafy,Small,Full Sun,60-90,Spring,Fall,Yes,Yes,No,No,No,Mediterranean herb with strong flavor,Dry leaves for long-term storage
+Thyme,Herb,Leafy,Small,Full Sun,90-120,Spring,Fall,Yes,Yes,No,No,No,Hardy herb perfect for seasoning,Trim regularly to maintain shape
+Rosemary,Herb,Woody,Medium,Full Sun,120-180,Spring,Fall,Yes,Yes,No,No,No,Aromatic evergreen herb,Well-draining soil essential
+Chives,Herb,Leafy,Small,Partial Shade,60-90,Spring,Fall,Yes,Yes,Yes,Yes,No,Mild onion-flavored herb,Divide clumps every 2-3 years
+Lettuce,Vegetable,Leafy,Small,Partial Shade,45-60,Spring,Fall,Yes,Yes,Yes,Yes,No,Cool-season leafy green,Harvest outer leaves for continuous growth
+Spinach,Vegetable,Leafy,Small,Partial Shade,40-50,Spring,Fall,Yes,Yes,Yes,Yes,Yes,Nutrient-dense leafy green,Plant in cool weather for best flavor
+Arugula,Vegetable,Leafy,Small,Partial Shade,30-40,Spring,Fall,Yes,Yes,Yes,Yes,No,Peppery leafy green,Harvest when leaves are young and tender
+Kale,Vegetable,Leafy,Medium,Partial Shade,55-75,Spring,Fall,Yes,Yes,No,Yes,Yes,Superfood leafy green,Remove lower leaves as plant grows
+Swiss Chard,Vegetable,Leafy,Medium,Partial Shade,50-60,Spring,Fall,Yes,Yes,No,Yes,Yes,Colorful leafy green with edible stems,Harvest outer leaves regularly
+Radish,Vegetable,Root,Small,Full Sun,25-30,Spring,Fall,Yes,Yes,Yes,Yes,No,Quick-growing root vegetable,Plant seeds directly in soil
+Carrot,Vegetable,Root,Medium,Full Sun,70-80,Spring,Fall,Yes,Yes,No,Yes,Yes,Sweet root vegetable,Thin seedlings for proper spacing
+Tomato,Vegetable,Fruit,Medium,Full Sun,75-85,Spring,Fall,Yes,Yes,No,Yes,Yes,Popular garden fruit,Support with stakes or cages
+Bell Pepper,Vegetable,Fruit,Medium,Full Sun,70-80,Spring,Fall,Yes,Yes,No,Yes,Yes,Sweet colorful peppers,Consistent watering for best fruit
+Cucumber,Vegetable,Fruit,Medium,Full Sun,50-70,Spring,Fall,Yes,Yes,Yes,Yes,Yes,Refreshing summer vegetable,Trellis for vertical growing
+Zucchini,Vegetable,Fruit,Medium,Full Sun,45-55,Spring,Fall,Yes,Yes,Yes,No,Yes,Productive summer squash,Harvest when small for best flavor
+Green Beans,Vegetable,Legume,Medium,Full Sun,50-60,Spring,Fall,Yes,Yes,Yes,Yes,No,High-protein vegetable,Trellis bush varieties
+Peas,Vegetable,Legume,Small,Partial Shade,60-70,Spring,Fall,Yes,Yes,No,Yes,No,Sweet spring vegetable,Plant early in cool weather
+Broccoli,Vegetable,Flower,Medium,Partial Shade,60-80,Spring,Fall,Yes,No,No,Yes,Yes,Nutritious cruciferous vegetable,Harvest main head before flowering
+Cauliflower,Vegetable,Flower,Medium,Partial Shade,60-80,Spring,Fall,Yes,No,No,Yes,Yes,White flowering vegetable,Blanch heads by tying leaves
+Cabbage,Vegetable,Leafy,Medium,Partial Shade,70-90,Spring,Fall,Yes,No,No,Yes,Yes,Cool-season leafy vegetable,Space plants adequately
+Onion,Vegetable,Bulb,Small,Full Sun,90-120,Spring,Fall,Yes,Yes,No,Yes,No,Essential cooking ingredient,Plant sets for faster growth
+Garlic,Vegetable,Bulb,Small,Full Sun,120-150,Spring,Fall,Yes,Yes,No,No,No,Flavorful bulb vegetable,Plant cloves in fall
+Potato,Vegetable,Tuber,Medium,Full Sun,90-120,Spring,Fall,Yes,No,No,No,Yes,Starchy root vegetable,Hill soil around stems
+Sweet Potato,Vegetable,Tuber,Medium,Full Sun,100-120,Spring,Fall,Yes,No,No,No,Yes,Nutritious root vegetable,Plant slips after last frost
+Strawberry,Fruit,Berry,Small,Full Sun,90-120,Spring,Fall,Yes,Yes,No,Yes,Yes,Sweet summer fruit,Remove runners for better fruit
+Blueberry,Fruit,Berry,Medium,Partial Shade,90-120,Spring,Fall,Yes,Yes,No,Yes,Yes,Antioxidant-rich berry,Acidic soil required
+Raspberry,Fruit,Berry,Medium,Partial Shade,90-120,Spring,Fall,Yes,Yes,No,Yes,Yes,Tart summer berry,Support canes with trellis
+Blackberry,Fruit,Berry,Medium,Partial Shade,90-120,Spring,Fall,Yes,Yes,No,Yes,Yes,Sweet summer berry,Prune old canes after fruiting
+Lemon,Fruit,Citrus,Medium,Full Sun,180-365,Spring,Fall,Yes,Yes,No,Yes,Yes,Tart citrus fruit,Protect from frost
+Lime,Fruit,Citrus,Medium,Full Sun,180-365,Spring,Fall,Yes,Yes,No,Yes,Yes,Tart citrus fruit,Consistent moisture needed
+Orange,Fruit,Citrus,Large,Full Sun,180-365,Spring,Fall,Yes,No,No,Yes,Yes,Sweet citrus fruit,Full sun essential
+Grapefruit,Fruit,Citrus,Large,Full Sun,180-365,Spring,Fall,Yes,No,No,Yes,Yes,Large citrus fruit,Well-draining soil required
+Apple,Fruit,Tree,Large,Full Sun,365-730,Spring,Fall,No,No,No,Yes,Yes,Popular tree fruit,Cold stratification needed
+Pear,Fruit,Tree,Large,Full Sun,365-730,Spring,Fall,No,No,No,Yes,Yes,Sweet tree fruit,Cross-pollination required
+Cherry,Fruit,Tree,Large,Full Sun,365-730,Spring,Fall,No,No,No,Yes,Yes,Sweet stone fruit,Chill hours required
+Peach,Fruit,Tree,Large,Full Sun,365-730,Spring,Fall,No,No,No,Yes,Yes,Sweet stone fruit,Prune for better fruiting
+Plum,Fruit,Tree,Large,Full Sun,365-730,Spring,Fall,No,No,No,Yes,Yes,Sweet stone fruit,Thin fruit for better size
+Grape,Fruit,Vine,Large,Full Sun,120-180,Spring,Fall,Yes,Yes,No,Yes,Yes,Sweet climbing fruit,Trellis support needed
+Watermelon,Fruit,Vine,Large,Full Sun,80-100,Spring,Fall,No,No,No,Yes,Yes,Large summer fruit,Plenty of space needed
+Cantaloupe,Fruit,Vine,Large,Full Sun,80-90,Spring,Fall,No,No,No,Yes,Yes,Sweet melon fruit,Consistent watering
+Honeydew,Fruit,Vine,Large,Full Sun,80-90,Spring,Fall,No,No,No,Yes,Yes,Sweet melon fruit,Harvest when stem separates
+Pumpkin,Fruit,Vine,Large,Full Sun,90-120,Spring,Fall,No,No,No,No,Yes,Large fall fruit,Plenty of space needed
+Squash,Fruit,Vine,Medium,Full Sun,50-60,Spring,Fall,Yes,Yes,Yes,Yes,Yes,Summer and winter varieties,Harvest regularly
+Eggplant,Vegetable,Fruit,Medium,Full Sun,70-80,Spring,Fall,Yes,Yes,No,Yes,Yes,Rich purple vegetable,Consistent moisture
+Okra,Vegetable,Fruit,Medium,Full Sun,50-60,Spring,Fall,Yes,Yes,Yes,Yes,No,Heat-loving vegetable,Harvest when pods are young
+Corn,Vegetable,Grain,Large,Full Sun,70-90,Spring,Fall,No,No,No,Yes,Yes,Sweet summer vegetable,Plant in blocks for pollination
+
+
+
+
+
+
+

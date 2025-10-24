@@ -1,0 +1,506 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+}
+
+@layer base {
+  :root {
+    --background: 48 20% 97%; /* Cream background */
+    --foreground: 160 84% 15%; /* Dark forest green */
+
+    --card: 48 20% 95%;
+    --card-foreground: 160 84% 15%;
+
+    --popover: 48 20% 97%;
+    --popover-foreground: 160 84% 15%;
+
+    --primary: 160 100% 22%; /* Forest green */
+    --primary-foreground: 48 20% 97%;
+
+    --secondary: 48 20% 90%;
+    --secondary-foreground: 160 84% 15%;
+
+    --muted: 48 20% 90%;
+    --muted-foreground: 160 50% 35%;
+
+    --accent: 48 30% 85%;
+    --accent-foreground: 160 84% 15%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 48 20% 97%;
+
+    --border: 48 20% 85%;
+    --input: 48 20% 85%;
+    --ring: 160 100% 22%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 160 84% 8%; /* Dark forest green background */
+    --foreground: 48 20% 97%; /* Cream foreground */
+
+    --card: 160 84% 10%;
+    --card-foreground: 48 20% 97%;
+
+    --popover: 160 84% 8%;
+    --popover-foreground: 48 20% 97%;
+
+    --primary: 48 20% 97%; /* Cream primary in dark mode */
+    --primary-foreground: 160 84% 15%;
+
+    --secondary: 160 84% 15%;
+    --secondary-foreground: 48 20% 97%;
+
+    --muted: 160 84% 15%;
+    --muted-foreground: 48 20% 70%;
+
+    --accent: 160 84% 15%;
+    --accent-foreground: 48 20% 97%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 48 20% 97%;
+
+    --border: 160 84% 15%;
+    --input: 160 84% 15%;
+    --ring: 48 20% 97%;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom styles for UrbanSprout */
+.hero-gradient {
+  background: linear-gradient(135deg, #00704a 0%, #005c3d 50%, #f4e4c1 100%);
+}
+
+.glass-effect {
+  backdrop-filter: blur(10px);
+  background: rgba(244, 228, 193, 0.1);
+  border: 1px solid rgba(244, 228, 193, 0.2);
+}
+
+.text-shadow {
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-cream-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-forest-green-500 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-forest-green-600;
+}
+
+/* Quick Tips Slideshow Animation */
+@keyframes zoomOut {
+  0% {
+    transform: scale(1.1);
+    opacity: 0;
+  }
+  10% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  90% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+}
+
+/* Hide Today button in datetime-local inputs - Aggressive approach */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  background: transparent !important;
+  bottom: 0;
+  color: transparent !important;
+  cursor: pointer;
+  height: auto;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: auto;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+input[type="datetime-local"]::-webkit-datetime-edit {
+  padding: 0;
+}
+
+/* Remove Today button from date picker */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator::after {
+  content: '';
+  display: none !important;
+}
+
+/* Remove Today button from date picker */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator::before {
+  content: '';
+  display: none !important;
+}
+
+/* Alternative approach to hide Today button */
+input[type="datetime-local"] {
+  position: relative;
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  height: auto;
+  color: transparent !important;
+  background: transparent !important;
+  cursor: pointer;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide the Today button specifically */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Additional approach to hide Today button in date picker popup */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:active {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:focus {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:visited {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:link {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:any-link {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:target {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:enabled {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:disabled {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:checked {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:indeterminate {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:invalid {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:valid {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:required {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:optional {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:read-only {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:read-write {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Specific styles for discount date inputs - Aggressive approach */
+.no-today-button::-webkit-calendar-picker-indicator {
+  background: transparent !important;
+  color: transparent !important;
+  cursor: pointer;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in the date picker popup */
+.no-today-button::-webkit-calendar-picker-indicator::before {
+  content: '';
+  display: none !important;
+}
+
+/* Additional approach to hide Today button */
+.no-today-button::-webkit-calendar-picker-indicator::after {
+  content: '';
+  display: none !important;
+}
+
+/* Hide Today button in date picker popup */
+.no-today-button::-webkit-calendar-picker-indicator:hover {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+.no-today-button::-webkit-calendar-picker-indicator:active {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+.no-today-button::-webkit-calendar-picker-indicator:focus {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Additional approach to hide Today button in date picker popup */
+.no-today-button::-webkit-calendar-picker-indicator:active {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+.no-today-button::-webkit-calendar-picker-indicator:visited {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+.no-today-button::-webkit-calendar-picker-indicator:link {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+.no-today-button::-webkit-calendar-picker-indicator:any-link {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+.no-today-button::-webkit-calendar-picker-indicator:target {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+.no-today-button::-webkit-calendar-picker-indicator:enabled {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+.no-today-button::-webkit-calendar-picker-indicator:disabled {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+.no-today-button::-webkit-calendar-picker-indicator:checked {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+.no-today-button::-webkit-calendar-picker-indicator:indeterminate {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+.no-today-button::-webkit-calendar-picker-indicator:invalid {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+.no-today-button::-webkit-calendar-picker-indicator:valid {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+.no-today-button::-webkit-calendar-picker-indicator:required {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+.no-today-button::-webkit-calendar-picker-indicator:optional {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+.no-today-button::-webkit-calendar-picker-indicator:read-only {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Hide Today button in date picker popup */
+.no-today-button::-webkit-calendar-picker-indicator:read-write {
+  background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Additional aggressive approach to hide Today button */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.no-today-button::-webkit-calendar-picker-indicator {
+  background: transparent !important;
+  color: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+  transform: none !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Hide Today button in date picker popup - Ultimate approach */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator::before,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator::after,
+.no-today-button::-webkit-calendar-picker-indicator::before,
+.no-today-button::-webkit-calendar-picker-indicator::after {
+  content: '' !important;
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+  transform: none !important;
+  transition: none !important;
+  animation: none !important;
+}

@@ -1,0 +1,216 @@
+{
+  "plantSuggestions": {
+    "small_fullSun_beginner_low_food": [
+      {
+        "name": "Cherry Tomato",
+        "category": "Fruits",
+        "description": "Small, sweet tomatoes perfect for containers. Easy to grow!",
+        "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&h=200&fit=crop&q=80",
+        "growingTime": "60-75 days",
+        "sunlight": "Full Sun",
+        "space": "Small",
+        "difficulty": "Easy",
+        "price": "₹30-50"
+      },
+      {
+        "name": "Sweet Basil",
+        "category": "Herbs",
+        "description": "Aromatic herb perfect for cooking. Great for beginners!",
+        "image": "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=300&h=200&fit=crop&q=80",
+        "growingTime": "30-45 days",
+        "sunlight": "Full Sun",
+        "space": "Small",
+        "difficulty": "Easy",
+        "price": "₹20-30"
+      },
+      {
+        "name": "Bell Pepper",
+        "category": "Vegetables",
+        "description": "Colorful peppers that add flavor to any dish.",
+        "image": "https://images.unsplash.com/photo-1544816155-12df9643f363?w=300&h=200&fit=crop&q=80",
+        "growingTime": "70-90 days",
+        "sunlight": "Full Sun",
+        "space": "Small",
+        "difficulty": "Easy",
+        "price": "₹25-40"
+      },
+      {
+        "name": "Strawberry",
+        "category": "Fruits",
+        "description": "Sweet, juicy berries perfect for desserts.",
+        "image": "https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=300&h=200&fit=crop&q=80",
+        "growingTime": "60-80 days",
+        "sunlight": "Full Sun",
+        "space": "Small",
+        "difficulty": "Easy",
+        "price": "₹25-40"
+      },
+      {
+        "name": "Lettuce",
+        "category": "Vegetables",
+        "description": "Crisp, fresh greens perfect for salads.",
+        "image": "https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?w=300&h=200&fit=crop&q=80",
+        "growingTime": "30-45 days",
+        "sunlight": "Full Sun",
+        "space": "Small",
+        "difficulty": "Easy",
+        "price": "₹15-25"
+      },
+      {
+        "name": "Fresh Mint",
+        "category": "Herbs",
+        "description": "Fast-growing herb perfect for teas and cooking.",
+        "image": "https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=300&h=200&fit=crop&q=80",
+        "growingTime": "20-30 days",
+        "sunlight": "Full Sun",
+        "space": "Small",
+        "difficulty": "Easy",
+        "price": "₹15-25"
+      }
+    ],
+    "small_partialSun_beginner_low_food": [
+      {
+        "name": "Spinach",
+        "category": "Vegetables",
+        "description": "Nutrient-rich leafy green that grows well in partial shade.",
+        "image": "https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=300&h=200&fit=crop&q=80",
+        "growingTime": "35-50 days",
+        "sunlight": "Partial Sun",
+        "space": "Small",
+        "difficulty": "Easy",
+        "price": "₹20-30"
+      },
+      {
+        "name": "Cilantro",
+        "category": "Herbs",
+        "description": "Fresh herb perfect for Indian cooking and garnishing.",
+        "image": "https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=300&h=200&fit=crop&q=80",
+        "growingTime": "25-35 days",
+        "sunlight": "Partial Sun",
+        "space": "Small",
+        "difficulty": "Easy",
+        "price": "₹15-25"
+      },
+      {
+        "name": "Green Onions",
+        "category": "Vegetables",
+        "description": "Quick-growing onions perfect for garnishing dishes.",
+        "image": "https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?w=300&h=200&fit=crop&q=80",
+        "growingTime": "20-30 days",
+        "sunlight": "Partial Sun",
+        "space": "Small",
+        "difficulty": "Easy",
+        "price": "₹10-20"
+      },
+      {
+        "name": "Parsley",
+        "category": "Herbs",
+        "description": "Versatile herb great for cooking and garnishing.",
+        "image": "https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=300&h=200&fit=crop&q=80",
+        "growingTime": "30-40 days",
+        "sunlight": "Partial Sun",
+        "space": "Small",
+        "difficulty": "Easy",
+        "price": "₹18-28"
+      },
+      {
+        "name": "Kale",
+        "category": "Vegetables",
+        "description": "Superfood green packed with nutrients and vitamins.",
+        "image": "https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=300&h=200&fit=crop&q=80",
+        "growingTime": "50-65 days",
+        "sunlight": "Partial Sun",
+        "space": "Small",
+        "difficulty": "Easy",
+        "price": "₹25-35"
+      },
+      {
+        "name": "Oregano",
+        "category": "Herbs",
+        "description": "Mediterranean herb perfect for Italian dishes.",
+        "image": "https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=300&h=200&fit=crop&q=80",
+        "growingTime": "40-50 days",
+        "sunlight": "Partial Sun",
+        "space": "Small",
+        "difficulty": "Easy",
+        "price": "₹20-30"
+      }
+    ],
+    "small_fullSun_beginner_low_beauty": [
+      {
+        "name": "Marigolds",
+        "category": "Herbs",
+        "description": "Bright orange flowers perfect for small spaces.",
+        "image": "https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=300&h=200&fit=crop&q=80",
+        "growingTime": "60-80 days",
+        "sunlight": "Full Sun",
+        "space": "Small",
+        "difficulty": "Easy",
+        "price": "₹20-40"
+      },
+      {
+        "name": "Petunias",
+        "category": "Herbs",
+        "description": "Colorful flowers perfect for containers.",
+        "image": "https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=300&h=200&fit=crop&q=80",
+        "growingTime": "70-90 days",
+        "sunlight": "Full Sun",
+        "space": "Small",
+        "difficulty": "Easy",
+        "price": "₹25-50"
+      },
+      {
+        "name": "Geraniums",
+        "category": "Herbs",
+        "description": "Classic flowering plant perfect for beginners.",
+        "image": "https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=300&h=200&fit=crop&q=80",
+        "growingTime": "80-100 days",
+        "sunlight": "Full Sun",
+        "space": "Small",
+        "difficulty": "Easy",
+        "price": "₹30-60"
+      },
+      {
+        "name": "Pansies",
+        "category": "Herbs",
+        "description": "Cheerful flowers perfect for small gardens.",
+        "image": "https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=300&h=200&fit=crop&q=80",
+        "growingTime": "60-80 days",
+        "sunlight": "Full Sun",
+        "space": "Small",
+        "difficulty": "Easy",
+        "price": "₹15-30"
+      },
+      {
+        "name": "Nasturtiums",
+        "category": "Herbs",
+        "description": "Edible flowers perfect for small spaces.",
+        "image": "https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=300&h=200&fit=crop&q=80",
+        "growingTime": "50-70 days",
+        "sunlight": "Full Sun",
+        "space": "Small",
+        "difficulty": "Easy",
+        "price": "₹20-40"
+      },
+      {
+        "name": "Alyssum",
+        "category": "Herbs",
+        "description": "Sweet-smelling flowers perfect for borders.",
+        "image": "https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=300&h=200&fit=crop&q=80",
+        "growingTime": "60-80 days",
+        "sunlight": "Full Sun",
+        "space": "Small",
+        "difficulty": "Easy",
+        "price": "₹15-35"
+      }
+    ]
+  },
+  "metadata": {
+    "lastUpdated": "2024-01-15",
+    "totalCombinations": 324,
+    "plantsPerCombination": 6,
+    "totalPlants": 1944
+  }
+}
+
+
