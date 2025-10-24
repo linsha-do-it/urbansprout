@@ -1,58 +1,14 @@
 services:
-  # Frontend Service - Static Site with comprehensive routing
-  - type: static
+  # Frontend Service - Web Service with Express server (MOST RELIABLE)
+  - type: web
     name: urbansprout
     buildCommand: cd client && npm install --include=dev && npm run build
-    staticPublishPath: ./client/dist
-    routes:
-      # Rewrite all non-asset routes to index.html for React Router
-      - type: rewrite
-        source: /*
-        destination: /index.html
-      # Handle static assets properly
-      - type: rewrite
-        source: /assets/*
-        destination: /assets/:splat
-      - type: rewrite
-        source: /fonts/*
-        destination: /fonts/:splat
-      # Handle specific file extensions
-      - type: rewrite
-        source: "*.css"
-        destination: /:splat
-      - type: rewrite
-        source: "*.js"
-        destination: /:splat
-      - type: rewrite
-        source: "*.png"
-        destination: /:splat
-      - type: rewrite
-        source: "*.jpg"
-        destination: /:splat
-      - type: rewrite
-        source: "*.jpeg"
-        destination: /:splat
-      - type: rewrite
-        source: "*.gif"
-        destination: /:splat
-      - type: rewrite
-        source: "*.ico"
-        destination: /:splat
-      - type: rewrite
-        source: "*.svg"
-        destination: /:splat
-      - type: rewrite
-        source: "*.woff"
-        destination: /:splat
-      - type: rewrite
-        source: "*.woff2"
-        destination: /:splat
-      - type: rewrite
-        source: "*.ttf"
-        destination: /:splat
+    startCommand: cd client && npm start
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: "3000"
       - key: VITE_API_BASE_URL
         value: https://urbansprout-backend.onrender.com/api
       - key: VITE_FIREBASE_API_KEY
