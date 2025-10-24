@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "node server.js",
+    "start:prod": "NODE_ENV=production node server.js",
     "start:preview": "vite preview --port 3000 --host"
   },
   "dependencies": {
