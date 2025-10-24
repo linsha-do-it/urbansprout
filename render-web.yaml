@@ -1,0 +1,25 @@
+services:
+  # Frontend Service - Web Service with Express server for routing
+  - type: web
+    name: urbansprout
+    buildCommand: cd client && npm install --include=dev && npm run build
+    startCommand: cd client && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: VITE_API_BASE_URL
+        value: https://urbansprout-backend.onrender.com/api
+      - key: VITE_FIREBASE_API_KEY
+        value: AIzaSyDyyL7LDD2DeZmfetNvzdY8QZ5-eUJqHwU
+      - key: VITE_FIREBASE_AUTH_DOMAIN
+        value: urbansprout-bc137.firebaseapp.com
+      - key: VITE_FIREBASE_PROJECT_ID
+        value: urbansprout-bc137
+      - key: VITE_FIREBASE_STORAGE_BUCKET
+        value: urbansprout-bc137.firebasestorage.app
+      - key: VITE_FIREBASE_MESSAGING_SENDER_ID
+        value: "793698516798"
+      - key: VITE_FIREBASE_APP_ID
+        value: "1:793698516798:web:e87815785ae0b3575d766f"
