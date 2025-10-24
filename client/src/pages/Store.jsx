@@ -628,9 +628,15 @@ const Store = () => {
               });
 
               if (verifyResponse.success) {
-                // Payment verified successfully
+                // Payment verified successfully - Order should be created by backend
+                // Clear cart after successful order creation
                 setCart([])
-                await saveCartToDB([])
+                try {
+                  await saveCartToDB([])
+                } catch (cartError) {
+                  console.warn('Cart clearing failed, but order was successful:', cartError)
+                  // Don't fail the entire flow for cart clearing issues
+                }
                 setShowCheckout(false)
                 setIsProcessingPayment(false)
                 alert('Payment successful! Order placed successfully.')
