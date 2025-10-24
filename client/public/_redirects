@@ -1,9 +1,12 @@
-# Redirect all routes to index.html for React Router
+# Comprehensive redirects for React Router
+# Redirect all routes to index.html for client-side routing
 /*    /index.html   200
 
-# Cache static assets
+# Handle static assets with proper caching
 /assets/*    /assets/:splat    200
 /fonts/*    /fonts/:splat      200
+
+# Handle specific file extensions
 *.css       /:splat           200
 *.js        /:splat           200
 *.png       /:splat           200
@@ -15,3 +18,6 @@
 *.woff      /:splat           200
 *.woff2     /:splat           200
 *.ttf       /:splat           200
+
+# Handle API routes (if any)
+/api/*      /api/:splat       200

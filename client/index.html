@@ -31,9 +31,9 @@
             onload="console.log('Razorpay script loaded successfully')"
             onerror="console.error('Failed to load Razorpay script')"></script>
     
-    <!-- Enhanced Routing Fix for Static Sites -->
+    <!-- Comprehensive Routing Fix for Static Sites -->
     <script>
-      // Comprehensive routing fix for static hosting
+      // Enhanced routing fix for React Router on static hosting
       (function() {
         const currentPath = window.location.pathname;
         const isApiCall = currentPath.startsWith('/api/');
@@ -42,25 +42,42 @@
                              currentPath.startsWith('/fonts/') ||
                              /\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf)$/i.test(currentPath);
         
-        // Only redirect if it's not an API call, not a static asset, and not the root
-        if (!isApiCall && !hasFileExtension && !isStaticAsset && currentPath !== '/') {
-          // Check if the current page is showing a 404 or error
-          const isErrorPage = document.title.includes('404') || 
-                             document.title.includes('Not Found') ||
-                             document.body.textContent.includes('Not Found') ||
-                             document.body.textContent.includes('404') ||
-                             document.body.textContent.includes('Error') ||
-                             document.body.textContent.includes('Failed to load resource');
+        // Only handle routing for non-static assets
+        if (!isApiCall && !hasFileExtension && !isStaticAsset) {
+          // Check if we're on a React Router route
+          const isReactRoute = currentPath !== '/' && 
+                              !currentPath.startsWith('/api/') &&
+                              !hasFileExtension;
           
-          if (isErrorPage) {
-            console.log('Detected error page, redirecting to home page');
-            window.location.href = '/';
-          } else {
-            // If we're on a route that doesn't exist, try to load the app
-            console.log('Loading React app for route:', currentPath);
-            // The React app will handle the routing
+          if (isReactRoute) {
+            console.log('React Router route detected:', currentPath);
+            
+            // Check if the page loaded successfully
+            setTimeout(function() {
+              const rootElement = document.getElementById('root');
+              if (rootElement && rootElement.innerHTML.trim() === '') {
+                console.log('React app failed to load, redirecting to home');
+                window.location.href = '/';
+              }
+            }, 1000);
           }
         }
+        
+        // Handle 404 errors
+        window.addEventListener('error', function(e) {
+          if (e.message && e.message.includes('404')) {
+            console.log('404 error detected, redirecting to home');
+            window.location.href = '/';
+          }
+        });
+        
+        // Handle network errors
+        window.addEventListener('unhandledrejection', function(e) {
+          if (e.reason && e.reason.message && e.reason.message.includes('404')) {
+            console.log('Network 404 error detected, redirecting to home');
+            window.location.href = '/';
+          }
+        });
       })();
     </script>
   </head>
