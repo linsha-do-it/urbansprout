@@ -4,10 +4,6 @@ services:
     name: urbansprout-frontend
     buildCommand: cd client && npm install && npm run build
     staticPublishPath: ./client/dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
     envVars:
       - key: NODE_ENV
         value: production

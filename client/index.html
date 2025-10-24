@@ -33,6 +33,28 @@
   </head>
   <body>
     <div id="root"></div>
+    
+    <!-- Emergency Routing Fix for Render -->
+    <script>
+      // Fallback routing fix for Render static hosting
+      (function() {
+        const currentPath = window.location.pathname;
+        const isApiCall = currentPath.startsWith('/api/');
+        const hasFileExtension = /\.[a-zA-Z0-9]+$/.test(currentPath);
+        
+        // Only redirect if it's not an API call, not a file, and not the root
+        if (!isApiCall && !hasFileExtension && currentPath !== '/') {
+          // Check if the current page is showing a 404
+          if (document.title.includes('404') || 
+              document.body.textContent.includes('Not Found') ||
+              document.body.textContent.includes('404')) {
+            console.log('Detected 404, redirecting to home page');
+            window.location.href = '/';
+          }
+        }
+      })();
+    </script>
+    
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
