@@ -2,7 +2,10 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001
 
 // API utility function
 export const apiCall = async (endpoint, options = {}) => {
-  const url = `${API_BASE_URL}${endpoint}`;
+  // Ensure no double slashes by removing trailing slash from base URL and leading slash from endpoint
+  const baseUrl = API_BASE_URL.replace(/\/$/, ''); // Remove trailing slash
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`; // Ensure leading slash
+  const url = `${baseUrl}${cleanEndpoint}`;
   
   const config = {
     headers: {
