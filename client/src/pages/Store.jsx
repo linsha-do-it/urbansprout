@@ -761,7 +761,12 @@ const Store = () => {
       if (response.success) {
         // Clear cart after successful order
         setCart([])
-        await saveCartToDB([])
+        try {
+          await saveCartToDB([])
+        } catch (cartError) {
+          console.warn('Cart clearing failed, but order was successful:', cartError)
+          // Don't fail the entire flow for cart clearing issues
+        }
         
         // Close checkout modal
         setShowCheckout(false)
