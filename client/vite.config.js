@@ -28,12 +28,15 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: false,
     minify: 'esbuild',
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
           firebase: ['firebase/app', 'firebase/auth'],
-          ui: ['framer-motion', 'lucide-react']
+          ui: ['framer-motion', 'lucide-react'],
+          charts: ['recharts'],
+          icons: ['react-icons']
         }
       }
     }
