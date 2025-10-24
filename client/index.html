@@ -30,13 +30,10 @@
     <script src="https://checkout.razorpay.com/v1/checkout.js" 
             onload="console.log('Razorpay script loaded successfully')"
             onerror="console.error('Failed to load Razorpay script')"></script>
-  </head>
-  <body>
-    <div id="root"></div>
     
-    <!-- Emergency Routing Fix for Render -->
+    <!-- Enhanced Routing Fix for Static Sites -->
     <script>
-      // Fallback routing fix for Render static hosting
+      // Comprehensive routing fix for static hosting
       (function() {
         const currentPath = window.location.pathname;
         const isApiCall = currentPath.startsWith('/api/');
@@ -44,15 +41,46 @@
         
         // Only redirect if it's not an API call, not a file, and not the root
         if (!isApiCall && !hasFileExtension && currentPath !== '/') {
-          // Check if the current page is showing a 404
-          if (document.title.includes('404') || 
-              document.body.textContent.includes('Not Found') ||
-              document.body.textContent.includes('404')) {
-            console.log('Detected 404, redirecting to home page');
+          // Check if the current page is showing a 404 or error
+          const isErrorPage = document.title.includes('404') || 
+                             document.title.includes('Not Found') ||
+                             document.body.textContent.includes('Not Found') ||
+                             document.body.textContent.includes('404') ||
+                             document.body.textContent.includes('Error');
+          
+          if (isErrorPage) {
+            console.log('Detected error page, redirecting to home page');
             window.location.href = '/';
+          } else {
+            // If we're on a route that doesn't exist, try to load the app
+            console.log('Loading React app for route:', currentPath);
+            // The React app will handle the routing
           }
         }
       })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    
+    <!-- Fallback routing script -->
+    <script>
+      // Additional fallback for routing issues
+      window.addEventListener('load', function() {
+        const currentPath = window.location.pathname;
+        const hasFileExtension = /\.[a-zA-Z0-9]+$/.test(currentPath);
+        
+        if (!hasFileExtension && currentPath !== '/') {
+          // Check if React app loaded successfully
+          setTimeout(function() {
+            const rootElement = document.getElementById('root');
+            if (rootElement && rootElement.innerHTML.trim() === '') {
+              console.log('React app failed to load, redirecting to home');
+              window.location.href = '/';
+            }
+          }, 2000);
+        }
+      });
     </script>
     
     <script type="module" src="/src/main.jsx"></script>
