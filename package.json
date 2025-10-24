@@ -1,4 +1,11 @@
 {
+  "name": "urbansprout",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "cd client && npm install && npm run build",
+    "start": "cd client && npm start",
+    "dev": "cd client && npm run dev"
+  },
   "dependencies": {
     "axios": "^1.12.2",
     "firebase": "^12.1.0"
