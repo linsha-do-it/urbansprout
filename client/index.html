@@ -38,15 +38,19 @@
         const currentPath = window.location.pathname;
         const isApiCall = currentPath.startsWith('/api/');
         const hasFileExtension = /\.[a-zA-Z0-9]+$/.test(currentPath);
+        const isStaticAsset = currentPath.startsWith('/assets/') || 
+                             currentPath.startsWith('/fonts/') ||
+                             /\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf)$/i.test(currentPath);
         
-        // Only redirect if it's not an API call, not a file, and not the root
-        if (!isApiCall && !hasFileExtension && currentPath !== '/') {
+        // Only redirect if it's not an API call, not a static asset, and not the root
+        if (!isApiCall && !hasFileExtension && !isStaticAsset && currentPath !== '/') {
           // Check if the current page is showing a 404 or error
           const isErrorPage = document.title.includes('404') || 
                              document.title.includes('Not Found') ||
                              document.body.textContent.includes('Not Found') ||
                              document.body.textContent.includes('404') ||
-                             document.body.textContent.includes('Error');
+                             document.body.textContent.includes('Error') ||
+                             document.body.textContent.includes('Failed to load resource');
           
           if (isErrorPage) {
             console.log('Detected error page, redirecting to home page');

@@ -12,3 +12,6 @@
 *.gif       /:splat           200
 *.ico       /:splat           200
 *.svg       /:splat           200
+*.woff      /:splat           200
+*.woff2     /:splat           200
+*.ttf       /:splat           200
