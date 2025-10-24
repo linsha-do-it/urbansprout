@@ -72,6 +72,28 @@ app.use((req, res, next) => {
   next();
 });
 
+// Root route
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: '🌱 UrbanSprout Backend API is running!',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      test: '/api/test',
+      auth: '/api/auth',
+      plants: '/api/plants',
+      store: '/api/store',
+      blog: '/api/blog',
+      garden: '/api/garden',
+      chatbot: '/api/chatbot',
+      notifications: '/api/notifications'
+    }
+  });
+});
+
 // Base test route
 app.get('/api/test', (req, res) => {
   res.json({
