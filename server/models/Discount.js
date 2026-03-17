@@ -51,7 +51,12 @@ const discountSchema = new mongoose.Schema({
     required: true,
     validate: {
       validator: function(value) {
-        return value >= new Date();
+        // Only validate if this is a new document or startDate is being modified
+        // This allows updating other fields (like autoRemoved) on expired discounts
+        if (this.isNew || this.isModified('startDate')) {
+          return value >= new Date();
+        }
+        return true; // Skip validation if startDate hasn't changed
       },
       message: 'Start date must be in the future'
     }

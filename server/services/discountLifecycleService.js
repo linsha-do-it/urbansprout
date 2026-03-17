@@ -1,5 +1,6 @@
 const Discount = require('../models/Discount');
 const Product = require('../models/Product');
+const { isDbConnected } = require('../config/database');
 
 class DiscountLifecycleService {
   constructor() {
@@ -38,6 +39,9 @@ class DiscountLifecycleService {
 
   // Process all discounts for lifecycle management
   async processDiscounts() {
+    if (!isDbConnected()) {
+      return; // Skip when DB is down to avoid buffering timeouts
+    }
     try {
       console.log('Processing discount lifecycle...');
       const now = new Date();
@@ -109,6 +113,7 @@ class DiscountLifecycleService {
 const discountLifecycleService = new DiscountLifecycleService();
 
 module.exports = discountLifecycleService;
+
 
 
 

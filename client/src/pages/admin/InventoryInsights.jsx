@@ -62,8 +62,8 @@ const InventoryInsights = () => {
         socketRef.current.disconnect();
       }
 
-      // The backend Socket.IO server is initialized on the same port as the API (default 5002)
-      const SOCKET_URL = 'http://localhost:5002';
+      // The backend Socket.IO server is initialized on the same port as the API (default 5001)
+      const SOCKET_URL = 'http://localhost:5001';
       const token = localStorage.getItem('urbansprout_token');
 
       socketRef.current = io(SOCKET_URL, {
@@ -108,6 +108,15 @@ const InventoryInsights = () => {
 
   const loadInventoryInsights = async () => {
     try {
+      // Check if user is authenticated before making API calls
+      const token = localStorage.getItem('urbansprout_token');
+      if (!token || !user) {
+        console.log('No token or user, skipping inventory insights load');
+        setError('Please log in to view inventory insights');
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
       const response = await apiCall(`/admin/inventory-insights?period=${selectedPeriod}`);

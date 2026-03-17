@@ -12,7 +12,8 @@ import {
   XCircle,
   Clock,
   Trash2,
-  Eye
+  Eye,
+  X
 } from 'lucide-react';
 
 const AdminBlogPosts = () => {
@@ -25,6 +26,7 @@ const AdminBlogPosts = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [message, setMessage] = useState('');
+  const [viewingPost, setViewingPost] = useState(null);
 
   useEffect(() => {
     loadBlogPosts();
@@ -72,17 +74,21 @@ const AdminBlogPosts = () => {
     }
   };
 
-  const rejectBlogPost = async (postId) => {
-    const reason = window.prompt('Please provide a reason for rejecting this blog post:');
-    if (!reason || reason.trim().length === 0) {
-      setMessage('Rejection reason is required');
-      return;
+  const rejectBlogPost = async (postId, reason = null) => {
+    let rejectionReason = reason;
+    
+    if (!rejectionReason) {
+      rejectionReason = window.prompt('Please provide a reason for rejecting this blog post:');
+      if (!rejectionReason || rejectionReason.trim().length === 0) {
+        setMessage('Rejection reason is required');
+        return;
+      }
     }
     
     try {
       const response = await apiCall(`/admin/blog/${postId}/reject`, {
         method: 'PUT',
-        body: JSON.stringify({ reason: reason.trim() })
+        body: JSON.stringify({ reason: rejectionReason.trim() })
       });
       
       if (response.success) {
@@ -92,6 +98,23 @@ const AdminBlogPosts = () => {
     } catch (error) {
       console.error('Error rejecting blog post:', error);
       setMessage('Error rejecting blog post');
+    }
+  };
+
+  const warnUserForPost = async (postId) => {
+    if (!window.confirm('Send a content warning to this user and record a violation?')) return;
+
+    try {
+      const response = await apiCall(`/admin/blog/${postId}/warn`, {
+        method: 'PUT'
+      });
+
+      if (response.success) {
+        setMessage('User warned for this blog post');
+      }
+    } catch (error) {
+      console.error('Error warning user for blog post:', error);
+      setMessage('Error sending warning');
     }
   };
 
@@ -200,6 +223,7 @@ const AdminBlogPosts = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Toxicity</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -259,8 +283,20 @@ const AdminBlogPosts = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(post.createdAt).toLocaleDateString()}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {typeof post.toxicityScore === 'number'
+                          ? post.toxicityScore.toFixed(2)
+                          : '—'}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => setViewingPost(post)}
+                            className="text-blue-600 hover:text-blue-500"
+                            title="View full post"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
                           {(post.approvalStatus === 'pending' || !post.approvalStatus) && (
                             <>
                               <button
@@ -345,6 +381,186 @@ const AdminBlogPosts = () => {
           )}
         </div>
       </div>
+
+      {/* View Post Modal */}
+      {viewingPost && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900">Blog Post Details</h2>
+              <button
+                onClick={() => setViewingPost(null)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              {/* Post Image */}
+              {viewingPost.image && (
+                <div className="mb-6">
+                  <img 
+                    src={viewingPost.image} 
+                    alt={viewingPost.title}
+                    className="w-full h-64 object-cover rounded-lg"
+                  />
+                </div>
+              )}
+
+              {/* Post Title */}
+              <h1 className="text-3xl font-bold text-gray-900 mb-4">{viewingPost.title}</h1>
+
+              {/* Post Meta */}
+              <div className="flex flex-wrap gap-4 mb-6 text-sm text-gray-600">
+                <div className="flex items-center">
+                  <span className="font-medium">Author:</span>
+                  <span className="ml-2">{viewingPost.author || 'Unknown'}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="font-medium">Category:</span>
+                  <span className="ml-2">{viewingPost.category || 'General'}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="font-medium">Created:</span>
+                  <span className="ml-2">{new Date(viewingPost.createdAt).toLocaleString()}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="font-medium">Status:</span>
+                  <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${getStatusBadgeColor(viewingPost.approvalStatus || 'pending')}`}>
+                    {viewingPost.approvalStatus || 'pending'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Tags */}
+              {viewingPost.tags && viewingPost.tags.length > 0 && (
+                <div className="mb-6">
+                  <div className="flex flex-wrap gap-2">
+                    {viewingPost.tags.map((tag, index) => (
+                      <span 
+                        key={index}
+                        className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Post Content */}
+              <div className="prose max-w-none mb-6">
+                <div className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                  {viewingPost.content}
+                </div>
+              </div>
+
+              {/* Moderation / Toxicity Info */}
+              {(viewingPost.toxicityScore != null || viewingPost.moderationCategories) && (
+                <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                  <h3 className="text-sm font-semibold text-gray-800 mb-2">Automated Moderation</h3>
+                  {viewingPost.toxicityScore != null && (
+                    <p className="text-sm text-gray-700 mb-2">
+                      <span className="font-medium">Overall toxicity score:</span>{' '}
+                      {Number(viewingPost.toxicityScore).toFixed(2)}{' '}
+                      {viewingPost.moderationStatus && (
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-800">
+                          {viewingPost.moderationStatus}
+                        </span>
+                      )}
+                    </p>
+                  )}
+                  {viewingPost.moderationCategories && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs text-gray-700">
+                      {Object.entries(viewingPost.moderationCategories).map(([key, value]) => (
+                        <div key={key} className="flex justify-between">
+                          <span className="capitalize">
+                            {key.replace(/_/g, ' ')}
+                          </span>
+                          <span className="font-mono">{Number(value).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Rejection Reason */}
+              {viewingPost.rejectionReason && (
+                <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <h3 className="text-sm font-semibold text-red-800 mb-2">Rejection Reason:</h3>
+                  <p className="text-sm text-red-700">{viewingPost.rejectionReason}</p>
+                </div>
+              )}
+
+              {/* Stats */}
+              <div className="mt-6 grid grid-cols-4 gap-4 pt-6 border-t border-gray-200">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900">{viewingPost.views || 0}</div>
+                  <div className="text-xs text-gray-500">Views</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900">{viewingPost.likes?.length || 0}</div>
+                  <div className="text-xs text-gray-500">Likes</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900">{viewingPost.comments?.length || 0}</div>
+                  <div className="text-xs text-gray-500">Comments</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900">{viewingPost.bookmarks?.length || 0}</div>
+                  <div className="text-xs text-gray-500">Bookmarks</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-between space-x-3">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => warnUserForPost(viewingPost._id)}
+                  className="px-3 py-2 border border-yellow-300 text-yellow-800 rounded-lg bg-yellow-50 hover:bg-yellow-100 text-sm"
+                >
+                  Warn User
+                </button>
+              </div>
+              <button
+                onClick={() => setViewingPost(null)}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Close
+              </button>
+              {viewingPost.approvalStatus === 'pending' && (
+                <>
+                  <button
+                    onClick={async () => {
+                      if (!window.confirm('Are you sure you want to approve this blog post?')) return;
+                      await approveBlogPost(viewingPost._id);
+                      setViewingPost(null);
+                    }}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    Approve Post
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const reason = window.prompt('Please provide a reason for rejecting this blog post:');
+                      if (reason && reason.trim().length > 0) {
+                        await rejectBlogPost(viewingPost._id, reason);
+                        setViewingPost(null);
+                      }
+                    }}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    Reject Post
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

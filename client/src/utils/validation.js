@@ -78,13 +78,6 @@ export const validateForm = (formData, userType) => {
     errors.confirmPassword = 'Passwords do not match';
   }
 
-  // ID validation for experts and vendors
-  if ((userType === 'expert' || userType === 'vendor') && formData.professionalId) {
-    if (!validateID(formData.professionalId, userType)) {
-      errors.professionalId = `Invalid ${userType} ID format`;
-    }
-  }
-
   return {
     isValid: Object.keys(errors).length === 0,
     errors,
@@ -103,15 +96,6 @@ export const getValidationMessage = (field, value, userType) => {
     case 'email':
       if (!value) return '';
       if (!validateEmail(value)) return 'Invalid email format';
-      return '';
-
-    case 'professionalId':
-      if (!value) return '';
-      if (!validateID(value, userType)) {
-        return userType === 'expert' 
-          ? 'Expert ID must be 6-20 alphanumeric characters'
-          : 'Vendor ID must be 5-25 alphanumeric characters (hyphens allowed)';
-      }
       return '';
 
     default:

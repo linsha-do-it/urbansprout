@@ -9,6 +9,11 @@ const commentSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  authorRole: {
+    type: String,
+    enum: ['beginner', 'expert', 'vendor', 'admin'],
+    default: 'beginner'
+  },
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -114,6 +119,31 @@ const blogSchema = new mongoose.Schema({
     enum: ['pending', 'approved', 'rejected'],
     default: 'pending'
   },
+  // Automated moderation fields
+  toxicityScore: {
+    // Overall maximum toxicity score across all categories (0–1)
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 1
+  },
+  moderationStatus: {
+    // How the automated system classified this post
+    type: String,
+    enum: ['safe', 'flagged', 'removed', null],
+    default: null
+  },
+  moderationCategories: {
+    // Per-category scores, e.g. { toxicity: 0.12, hate: 0.03, ... }
+    type: Object,
+    default: {}
+  },
+  reviewedByAdmin: {
+    // Set when an admin has explicitly reviewed a flagged/removed post
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
   rejectionReason: {
     type: String,
     maxlength: 500
@@ -131,6 +161,24 @@ const blogSchema = new mongoose.Schema({
   },
   rejectedAt: {
     type: Date
+  },
+  // Track pending edits for approval
+  pendingEdit: {
+    title: String,
+    content: String,
+    excerpt: String,
+    category: String,
+    tags: [String],
+    image: String,
+    submittedAt: Date,
+    submittedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
+  },
+  isEditPending: {
+    type: Boolean,
+    default: false
   },
   comments: [commentSchema],
   createdAt: {

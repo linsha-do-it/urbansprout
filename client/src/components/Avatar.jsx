@@ -62,7 +62,7 @@ const Avatar = ({
 
   // Check if the photo is a database URL (starts with /api/profile-photo/)
   const isDatabaseUrl = userPhoto && userPhoto.startsWith('/api/profile-photo/')
-  const photoUrl = isDatabaseUrl ? `http://localhost:5002${userPhoto}` : userPhoto
+  const photoUrl = isDatabaseUrl ? `http://localhost:5001${userPhoto}` : userPhoto
 
   if (userPhoto) {
     return (

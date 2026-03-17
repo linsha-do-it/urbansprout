@@ -5,8 +5,13 @@ const Order = require('../models/Order');
 const User = require('../models/User');
 const Review = require('../models/Review');
 const Cart = require('../models/Cart');
+const VendorProduct = require('../models/VendorProduct');
 const { protect } = require('../middlewares/auth');
-const { sendOrderConfirmationEmail } = require('../utils/emailService');
+const { sendOrderConfirmationEmail, sendVendorNewOrderEmail } = require('../utils/emailService');
+const notificationService = require('../utils/notificationService');
+const VendorUser = require('../models/VendorUser');
+const VendorOrder = require('../models/VendorOrder');
+const { getHybridRecommendations } = require('../services/knnRecommendationService');
 const {
   createRazorpayOrder,
   verifyPayment,
@@ -17,6 +22,57 @@ const {
   removeFromWishlist,
   purchaseFromWishlist
 } = require('../controllers/storeController');
+
+// Simple in-memory cache for store filters (categories + price range)
+let STORE_FILTER_CACHE = {
+  categories: null,
+  priceRange: null,
+  lastUpdated: 0
+};
+
+const STORE_FILTER_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+async function getCachedStoreFilters() {
+  const now = Date.now();
+  if (
+    STORE_FILTER_CACHE.categories &&
+    STORE_FILTER_CACHE.priceRange &&
+    now - STORE_FILTER_CACHE.lastUpdated < STORE_FILTER_TTL_MS
+  ) {
+    return {
+      categories: STORE_FILTER_CACHE.categories,
+      priceRange: STORE_FILTER_CACHE.priceRange
+    };
+  }
+
+  const [categories, priceAgg] = await Promise.all([
+    Product.distinct('category', {
+      published: true,
+      archived: false,
+      name: { $not: /^Placeholder for/ }
+    }),
+    Product.aggregate([
+      { $match: { published: true, archived: false } },
+      {
+        $group: {
+          _id: null,
+          minPrice: { $min: '$regularPrice' },
+          maxPrice: { $max: '$regularPrice' }
+        }
+      }
+    ])
+  ]);
+
+  const priceRange = priceAgg[0] || { minPrice: 0, maxPrice: 100 };
+
+  STORE_FILTER_CACHE = {
+    categories,
+    priceRange,
+    lastUpdated: now
+  };
+
+  return { categories, priceRange };
+}
 
 // GET /store - Get all products with filters
 router.get('/', async (req, res) => {
@@ -84,25 +140,13 @@ router.get('/', async (req, res) => {
     // Execute query with pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
     
-    const [products, total] = await Promise.all([
+    const [products, total, filters] = await Promise.all([
       Product.find(filter)
         .sort(sortObj)
         .skip(skip)
         .limit(parseInt(limit)),
-      Product.countDocuments(filter)
-    ]);
-
-    // Get categories for filter sidebar
-    const categories = await Product.distinct('category');
-    
-    // Get price range
-    const priceRange = await Product.aggregate([
-      { $match: { published: true, archived: false } },
-      { $group: { 
-        _id: null, 
-        minPrice: { $min: '$regularPrice' }, 
-        maxPrice: { $max: '$regularPrice' } 
-      }}
+      Product.countDocuments(filter),
+      getCachedStoreFilters()
     ]);
 
     res.json({
@@ -116,8 +160,8 @@ router.get('/', async (req, res) => {
           limit: parseInt(limit)
         },
         filters: {
-          categories,
-          priceRange: priceRange[0] || { minPrice: 0, maxPrice: 100 }
+          categories: filters.categories,
+          priceRange: filters.priceRange
         }
       }
     });
@@ -126,34 +170,6 @@ router.get('/', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching products',
-      error: error.message
-    });
-  }
-});
-
-// GET /store/categories - Get all categories
-router.get('/categories', async (req, res) => {
-  try {
-    const categories = await Product.aggregate([
-      {
-        $match: {
-          published: true,
-          archived: false,
-          name: { $not: /^Placeholder for/ }
-        }
-      },
-      { $group: { _id: '$category', count: { $sum: 1 } } },
-      { $sort: { count: -1 } }
-    ]);
-
-    res.json({
-      success: true,
-      data: { categories }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching categories',
       error: error.message
     });
   }
@@ -234,13 +250,8 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    // Get related products (same category, different product)
-    const relatedProducts = await Product.find({
-      category: product.category,
-      _id: { $ne: product._id },
-      published: true,
-      archived: false
-    }).limit(3).lean();
+    // Get kNN-based recommendations (You May Also Like)
+    const relatedProducts = await getHybridRecommendations(req.params.id, 6);
 
     res.json({
       success: true,
@@ -251,6 +262,7 @@ router.get('/:id', async (req, res) => {
     });
 
   } catch (error) {
+    console.error('Error fetching product:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching product',
@@ -328,6 +340,31 @@ router.post('/orders', protect, async (req, res) => {
 
     await order.save();
 
+    // Reduce stock for all items in the order
+    console.log('Reducing stock for order items...');
+    for (const item of items) {
+      try {
+        const productId = item.id || item._id || item.productId;
+        const product = await Product.findById(productId);
+        
+        if (product) {
+          if (product.stock < item.quantity) {
+            console.warn(`⚠️ Insufficient stock for ${product.name}. Available: ${product.stock}, Required: ${item.quantity}`);
+          } else {
+            const oldStock = product.stock;
+            product.stock -= item.quantity;
+            await product.save();
+            console.log(`✅ Stock reduced for ${product.name}: ${oldStock} -> ${product.stock} (quantity: ${item.quantity})`);
+          }
+        } else {
+          console.warn(`⚠️ Product not found with ID: ${productId}`);
+        }
+      } catch (stockError) {
+        console.error(`❌ Error reducing stock for item ${item.name}:`, stockError);
+        // Continue with other items even if one fails
+      }
+    }
+
     // Send order confirmation email (only to non-admin users)
     try {
       const user = await User.findById(req.user._id);
@@ -359,6 +396,22 @@ router.post('/orders', protect, async (req, res) => {
     } catch (emailError) {
       console.error('❌ Failed to send order confirmation email:', emailError);
       // Don't fail the order creation if email fails
+    }
+
+    // Send order placement notification
+    try {
+      await notificationService.sendNotification(req.user._id, {
+        userEmail: req.user.email,
+        type: 'order_placed',
+        title: '🛒 Order Placed Successfully!',
+        message: `Your order #${order.orderNumber} has been placed successfully!`,
+        relatedId: order._id,
+        relatedModel: 'Order'
+      });
+      console.log(`✅ Order placement notification sent to ${req.user.email}`);
+    } catch (notificationError) {
+      console.error('❌ Failed to send order placement notification:', notificationError);
+      // Don't fail the order creation if notification fails
     }
 
     res.status(201).json({
@@ -491,6 +544,164 @@ router.post('/order', protect, async (req, res) => {
       success: false,
       message: 'Error creating order',
       error: error.message
+    });
+  }
+});
+
+// POST /store/vendor-checkout - Create order from vendor storefront (vendor products)
+router.post('/vendor-checkout', protect, async (req, res) => {
+  try {
+    const { items, shippingAddress, paymentMethod = 'Cash on Delivery' } = req.body;
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: 'Order items are required' });
+    }
+    if (!shippingAddress || !shippingAddress.fullName || !shippingAddress.address || !shippingAddress.city || !shippingAddress.postalCode || !shippingAddress.country) {
+      return res.status(400).json({ success: false, message: 'Valid shipping address is required' });
+    }
+    const vendorProducts = await VendorProduct.find({
+      _id: { $in: items.map(i => i.vendorProductId) },
+      published: true,
+      archived: false
+    }).lean();
+    const vpMap = new Map(vendorProducts.map(p => [String(p._id), p]));
+    const orderItems = [];
+    let subtotal = 0;
+    for (const it of items) {
+      const vp = vpMap.get(String(it.vendorProductId));
+      if (!vp) {
+        return res.status(400).json({ success: false, message: `Product not found or not available: ${it.vendorProductId}` });
+      }
+      const qty = Math.max(1, Number(it.quantity) || 1);
+      if (vp.stock < qty) {
+        return res.status(400).json({ success: false, message: `Insufficient stock for ${vp.name}. Available: ${vp.stock}` });
+      }
+      orderItems.push({
+        productId: String(vp._id),
+        name: vp.name,
+        price: vp.regularPrice,
+        quantity: qty,
+        image: Array.isArray(vp.images) && vp.images[0] ? vp.images[0] : ''
+      });
+      subtotal += vp.regularPrice * qty;
+    }
+    const shipping = 0;
+    const tax = 0;
+    const total = Math.round((subtotal + shipping + tax) * 100) / 100;
+    const order = new Order({
+      user: req.user._id,
+      items: orderItems,
+      shippingAddress: {
+        fullName: shippingAddress.fullName,
+        address: shippingAddress.address,
+        city: shippingAddress.city,
+        state: shippingAddress.state || '',
+        postalCode: shippingAddress.postalCode,
+        country: shippingAddress.country || 'India',
+        phone: shippingAddress.phone || ''
+      },
+      paymentMethod: paymentMethod === 'UPI' ? 'UPI' : 'Cash on Delivery',
+      subtotal,
+      shipping,
+      tax,
+      total,
+      status: 'pending'
+    });
+    await order.save();
+
+    // Create VendorOrder document(s) – one per vendor that has items in this order
+    const vendorToItems = new Map();
+    for (const it of order.items) {
+      const vp = vpMap.get(String(it.productId));
+      if (!vp) continue;
+      const vendorId = String(vp.vendor);
+      if (!vendorToItems.has(vendorId)) vendorToItems.set(vendorId, []);
+      vendorToItems.get(vendorId).push({
+        product: vp._id,
+        name: it.name,
+        price: it.price,
+        quantity: it.quantity,
+        image: it.image || ''
+      });
+    }
+    const buyerName = req.user.name || (req.user.toJSON && req.user.toJSON().name) || 'Customer';
+    const buyerEmail = req.user.email || (req.user.toJSON && req.user.toJSON().email) || '';
+    for (const [vendorId, vendorItems] of vendorToItems) {
+      const subtotal = vendorItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+      await VendorOrder.create({
+        order: order._id,
+        orderNumber: order.orderNumber,
+        vendor: vendorId,
+        buyer: req.user._id,
+        buyerName,
+        buyerEmail,
+        items: vendorItems,
+        subtotal,
+        shippingAddress: order.shippingAddress,
+        paymentMethod: order.paymentMethod,
+        status: order.status
+      });
+    }
+
+    for (const it of items) {
+      const vp = vpMap.get(String(it.vendorProductId));
+      if (vp) {
+        const qty = Math.max(1, Number(it.quantity) || 1);
+        await VendorProduct.findByIdAndUpdate(it.vendorProductId, { $inc: { stock: -qty } });
+      }
+    }
+    try {
+      if (buyerEmail) {
+        await sendOrderConfirmationEmail(buyerEmail, buyerName, {
+          orderId: order._id.toString().slice(-8),
+          orderNumber: order.orderNumber,
+          orderDate: order.createdAt,
+          totalAmount: order.total,
+          items: order.items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
+          shippingAddress: `${order.shippingAddress.fullName}, ${order.shippingAddress.address}, ${order.shippingAddress.city}, ${order.shippingAddress.postalCode}, ${order.shippingAddress.country}`,
+          estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+          paymentMethod: order.paymentMethod,
+          paymentStatus: order.paymentMethod === 'Cash on Delivery' ? 'Pending - Pay on Delivery' : 'Paid'
+        });
+      }
+    } catch (e) {
+      console.error('Vendor order confirmation email failed:', e);
+    }
+    const vendorIds = [...new Set(vendorProducts.map(p => String(p.vendor)))];
+    for (const vid of vendorIds) {
+      try {
+        const vendor = await VendorUser.findById(vid).select('email name').lean();
+        if (vendor && vendor.email) {
+          await sendVendorNewOrderEmail(vendor.email, vendor.name || 'Vendor', {
+            orderNumber: order.orderNumber,
+            items: order.items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
+            shippingAddress: order.shippingAddress,
+            totalAmount: order.total,
+            paymentMethod: order.paymentMethod,
+            buyerName
+          });
+        }
+        await notificationService.sendNotification(vid, {
+          userEmail: vendor?.email,
+          type: 'vendor_order',
+          title: '📦 New order received',
+          message: `Order #${order.orderNumber} – ${order.items.length} item(s), ${order.shippingAddress?.fullName || 'Customer'}. Dispatch to: ${order.shippingAddress?.address || ''}, ${order.shippingAddress?.city || ''}.`,
+          relatedId: order._id,
+          relatedModel: 'Order'
+        });
+      } catch (e) {
+        console.error('Vendor notification failed for', vid, e);
+      }
+    }
+    res.status(201).json({
+      success: true,
+      message: 'Order placed successfully',
+      data: { order }
+    });
+  } catch (error) {
+    console.error('Vendor checkout error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error placing order'
     });
   }
 });

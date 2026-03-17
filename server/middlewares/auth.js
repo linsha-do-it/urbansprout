@@ -1,6 +1,26 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const BeginnerUser = require('../models/BeginnerUser');
+const ExpertUser = require('../models/ExpertUser');
+const VendorUser = require('../models/VendorUser');
 const Admin = require('../models/Admin');
+
+// Helper function to find user in any collection by ID
+const findUserById = async (userId) => {
+  let user = await BeginnerUser.findById(userId);
+  if (user) return user;
+  
+  user = await ExpertUser.findById(userId);
+  if (user) return user;
+  
+  user = await VendorUser.findById(userId);
+  if (user) return user;
+  
+  user = await User.findById(userId);
+  if (user) return user;
+  
+  return null;
+};
 
 // Protect routes - require authentication
 const protect = async (req, res, next) => {
@@ -48,8 +68,8 @@ const protect = async (req, res, next) => {
         req.isAdmin = true;
         next();
       } else {
-        // Regular user token
-        const user = await User.findById(decoded.id);
+        // Regular user token - check all user collections
+        const user = await findUserById(decoded.id);
         
         if (!user) {
           return res.status(401).json({
@@ -102,9 +122,18 @@ const optionalAuth = async (req, res, next) => {
     if (token) {
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findById(decoded.id);
-        if (user) {
-          req.user = user;
+        if (decoded.type === 'admin') {
+          const admin = await Admin.findById(decoded.id);
+          if (admin) {
+            req.user = admin;
+            req.isAdmin = true;
+          }
+        } else {
+          const user = await findUserById(decoded.id);
+          if (user) {
+            req.user = user;
+            req.isAdmin = false;
+          }
         }
       } catch (error) {
         // Token is invalid, but we don't fail the request

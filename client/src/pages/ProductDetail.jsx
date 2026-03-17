@@ -367,7 +367,8 @@ const ProductDetail = () => {
 
   // Get total for single product
   const getProductTotal = () => {
-    return (product?.price || 0) * quantity;
+    const price = currentPrice || product?.price || product?.regularPrice || 0;
+    return price * quantity;
   };
 
   // Handle place order
@@ -397,7 +398,7 @@ const ProductDetail = () => {
         items: [{
           id: product._id,
           name: product.name,
-          price: product.price,
+          price: currentPrice, // Use the correct price field
           quantity: quantity
         }],
         shippingAddress,
@@ -532,7 +533,7 @@ const ProductDetail = () => {
         items: [{
           id: product._id,
           name: product.name,
-          price: product.price,
+          price: currentPrice, // Use the correct price field
           quantity: quantity
         }],
         shippingAddress,
@@ -785,7 +786,7 @@ const ProductDetail = () => {
                 <div className="flex space-x-4">
                   <button
                     onClick={handleAddToCart}
-                    disabled={product.stock <= 0 || isAddingToCart}
+                    disabled={(product.stock !== undefined && product.stock !== null && product.stock <= 0) || isAddingToCart}
                     className="flex-1 flex items-center justify-center px-6 py-3 bg-forest-green-600 text-white rounded-lg hover:bg-forest-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isAddingToCart ? (
@@ -797,7 +798,7 @@ const ProductDetail = () => {
                   </button>
                   <button
                     onClick={handleBuyNow}
-                    disabled={product.stock <= 0 || isBuyingNow}
+                    disabled={(product.stock !== undefined && product.stock !== null && product.stock <= 0) || isBuyingNow}
                     className="flex-1 flex items-center justify-center px-6 py-3 border-2 border-forest-green-600 text-forest-green-600 rounded-lg hover:bg-forest-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isBuyingNow ? (
@@ -966,7 +967,7 @@ const ProductDetail = () => {
             )}
           </motion.div>
 
-          {/* Related Products Section */}
+          {/* You May Also Like Section */}
           {recommendedProducts.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -974,7 +975,7 @@ const ProductDetail = () => {
               transition={{ delay: 0.6 }}
               className="mt-12"
             >
-                  <h2 className="text-2xl font-bold text-forest-green-800 mb-6">Related Products</h2>
+                  <h2 className="text-2xl font-bold text-forest-green-800 mb-6">You May Also Like</h2>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {recommendedProducts.map((recProduct) => (

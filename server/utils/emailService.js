@@ -32,48 +32,28 @@ const createTransporter = async () => {
   // In production, you should use a proper email service like SendGrid, AWS SES, etc.
   
   const emailUser = process.env.EMAIL_USER || 'noreply@urbansprout.com';
-  const emailPass = process.env.EMAIL_PASS || 'rfmq suds kmkc kifv';
+  const emailPass = process.env.EMAIL_PASS || '';
   
-  // Remove any spaces from the app password (common issue)
+  // Gmail app passwords sometimes come with spaces between the groups - remove all spaces
   const cleanEmailPass = emailPass.replace(/\s+/g, '');
   
-  console.log('Email configuration:', {
+  console.log('📧 Email configuration:', {
     user: emailUser,
     passLength: cleanEmailPass.length,
-    passStartsWith: cleanEmailPass.substring(0, 4) + '...'
+    passStartsWith: cleanEmailPass.length > 0 ? cleanEmailPass.substring(0, 4) + '...' : 'EMPTY',
+    hasSpaces: emailPass.includes(' ')
   });
   
   // Check if using placeholder credentials or invalid credentials
-  if (emailPass === 'your-app-password' || emailPass === 'your_app_password' || cleanEmailPass.length < 10) {
-    console.log('⚠️  Using placeholder email credentials - emails will be simulated');
-    return null; // Return null to indicate simulation mode
-  }
-  
-  // Check if email credentials are likely invalid (common patterns)
-  if (emailUser === 'noreply@urbansprout.com' && emailPass === 'rfmq suds kmkc kifv') {
-    console.log('⚠️  Using demo email credentials - emails will be simulated');
-    return null; // Return null to indicate simulation mode
-  }
-  
-  // Check if using placeholder Gmail credentials
-  if (emailUser === 'your-email@gmail.com' && emailPass === 'your-app-password') {
-    console.log('⚠️  Using placeholder Gmail credentials - emails will be simulated');
-    return null; // Return null to indicate simulation mode
-  }
-  
-  // Check for known invalid Gmail app passwords
-  if (emailUser === 'linshanadir16@gmail.com' && emailPass === 'rfmq suds kmkc kifv') {
-    console.log('⚠️  Using invalid Gmail credentials - trying Ethereal Email fallback');
+  // Gmail app passwords are usually 16 characters (no spaces)
+  if (!emailPass || emailPass === 'your-app-password' || emailPass === 'your_app_password' || cleanEmailPass.length < 10) {
+    console.log('⚠️  Invalid or missing email credentials - using Ethereal Email as fallback');
     return await createEtherealTransporter();
   }
   
-  // Check for new valid Gmail credentials
-  if (emailUser === 'linshanadir16@gmail.com' && emailPass === 'mmsw izay gipo pohy') {
-    console.log('✅ Using new Gmail credentials - attempting Gmail SMTP');
-    // Continue to Gmail SMTP setup below
-  }
-  
+  // Try Gmail SMTP
   try {
+    console.log('✅ Attempting Gmail SMTP connection...');
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 587,
@@ -82,7 +62,6 @@ const createTransporter = async () => {
         user: emailUser,
         pass: cleanEmailPass
       },
-      // Add additional options for better error handling
       pool: true,
       maxConnections: 1,
       rateDelta: 20000,
@@ -94,10 +73,12 @@ const createTransporter = async () => {
     
     // Test the connection
     await transporter.verify();
-    console.log('✅ Gmail SMTP connection verified');
+    console.log('✅ Gmail SMTP connection verified successfully!');
     return transporter;
   } catch (error) {
-    console.log('❌ Gmail SMTP failed, trying Ethereal Email fallback:', error.message);
+    console.log('❌ Gmail SMTP verification failed:', error.message);
+    console.log('❌ Error code:', error.code);
+    console.log('⚠️  Falling back to Ethereal Email...');
     return await createEtherealTransporter();
   }
 };
@@ -728,6 +709,7 @@ const sendBlogApprovalEmail = async (email, userName, blogTitle) => {
 // Send order confirmation email
 const sendOrderConfirmationEmail = async (email, userName, orderDetails) => {
   try {
+    console.log('📧 Attempting to send order confirmation email to:', email);
     const transporter = await createTransporter();
     
     // If transporter is null, it means we're in simulation mode
@@ -736,6 +718,8 @@ const sendOrderConfirmationEmail = async (email, userName, orderDetails) => {
       console.log('📧 Order ID:', orderDetails.orderId);
       return { success: true, messageId: 'simulated-' + Date.now() };
     }
+    
+    console.log('📧 Transporter created successfully, sending email...');
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -881,7 +865,8 @@ const sendOrderConfirmationEmail = async (email, userName, orderDetails) => {
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log('Order confirmation email sent:', info.messageId);
+    console.log('✅ Order confirmation email sent successfully:', info.messageId);
+    console.log('📧 Email sent to:', email);
     
     return {
       success: true,
@@ -889,7 +874,13 @@ const sendOrderConfirmationEmail = async (email, userName, orderDetails) => {
     };
 
   } catch (error) {
-    console.error('Error sending order confirmation email:', error);
+    console.error('❌ Error sending order confirmation email:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response
+    });
     return {
       success: false,
       error: error.message
@@ -1463,6 +1454,65 @@ const sendAdminVerificationEmail = async (email, userName, verificationType, det
   }
 };
 
+// Send new order notification to vendor (order from vendor storefront)
+const sendVendorNewOrderEmail = async (vendorEmail, vendorName, orderDetails) => {
+  try {
+    const transporter = await createTransporter();
+    if (!transporter) {
+      console.log('📧 Email simulation - vendor new order email would be sent to:', vendorEmail);
+      return { success: true, messageId: 'simulated-' + Date.now() };
+    }
+    const shippingStr = typeof orderDetails.shippingAddress === 'string'
+      ? orderDetails.shippingAddress
+      : [orderDetails.shippingAddress?.fullName, orderDetails.shippingAddress?.address, orderDetails.shippingAddress?.city, orderDetails.shippingAddress?.state, orderDetails.shippingAddress?.postalCode, orderDetails.shippingAddress?.country].filter(Boolean).join(', ');
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:linear-gradient(135deg,#059669,#047857);color:white;padding:20px;text-align:center;border-radius:8px 8px 0 0}.content{background:#f9fafb;padding:24px;border-radius:0 0 8px 8px}.order-details{background:white;border:1px solid #e5e7eb;padding:16px;border-radius:8px;margin:12px 0}.order-item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6}.order-item:last-child{border-bottom:none}.total{font-weight:bold;color:#059669}</style></head>
+      <body>
+        <div class="container">
+          <div class="header"><h1>📦 New order received</h1><p>Dispatch this order to the address below</p></div>
+          <div class="content">
+            <p>Hello ${vendorName},</p>
+            <p>A customer has placed an order on your storefront. Please prepare and dispatch the items to the shipping address below.</p>
+            <div class="order-details">
+              <h4>Order #${orderDetails.orderNumber}</h4>
+              <p><strong>Payment:</strong> ${orderDetails.paymentMethod || 'Cash on Delivery'}</p>
+              ${orderDetails.buyerName ? `<p><strong>Customer:</strong> ${orderDetails.buyerName}</p>` : ''}
+            </div>
+            <div class="order-details">
+              <h4>Items</h4>
+              ${(orderDetails.items || []).map(i => `<div class="order-item"><span>${i.name} × ${i.quantity}</span><span>${formatINR((i.price || 0) * (i.quantity || 1))}</span></div>`).join('')}
+              <div class="order-item"><span class="total">Total</span><span class="total">${formatINR(orderDetails.totalAmount || 0)}</span></div>
+            </div>
+            <div class="order-details">
+              <h4>Shipping address (dispatch to)</h4>
+              <p>${shippingStr}</p>
+              ${orderDetails.shippingAddress?.phone ? `<p>Phone: ${orderDetails.shippingAddress.phone}</p>` : ''}
+            </div>
+            <p>You can manage orders from your vendor dashboard.</p>
+            <p>— UrbanSprout</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+    const mailOptions = {
+      from: `"UrbanSprout" <${process.env.EMAIL_USER || 'noreply@urbansprout.com'}>`,
+      to: vendorEmail,
+      subject: `📦 New order #${orderDetails.orderNumber} – UrbanSprout`,
+      html: htmlContent,
+      text: `New order #${orderDetails.orderNumber}\n\nItems: ${(orderDetails.items || []).map(i => `${i.name} x${i.quantity}`).join(', ')}\nTotal: ${formatINR(orderDetails.totalAmount || 0)}\n\nShip to: ${shippingStr}`
+    };
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Vendor new order email sent to:', vendorEmail);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Error sending vendor new order email:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   sendPasswordResetEmail,
   sendWelcomeEmail,
@@ -1473,5 +1523,6 @@ module.exports = {
   sendPaymentConfirmationEmail,
   sendOrderStatusUpdateEmail,
   sendAdminVerificationEmail,
-  sendEmailNotification
+  sendEmailNotification,
+  sendVendorNewOrderEmail
 };

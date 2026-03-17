@@ -20,7 +20,7 @@ const validatePassword = (password) => {
 
 // Validate registration data
 const validateRegistration = (req, res, next) => {
-  const { name, email, password, role, professionalId } = req.body;
+  const { name, email, password, role } = req.body;
 
   // Check required fields
   if (!name || !email || !password) {
@@ -43,19 +43,9 @@ const validateRegistration = (req, res, next) => {
   }
 
   // Validate role
-  const validRoles = ['beginner', 'expert', 'vendor', 'admin'];
+  const validRoles = ['beginner', 'expert', 'vendor'];
   if (role && !validRoles.includes(role)) {
     return next(new AppError('Invalid role specified', 400));
-  }
-
-  // Validate professional ID for experts and vendors
-  if ((role === 'expert' || role === 'vendor') && professionalId) {
-    if (role === 'expert' && !/^[A-Za-z0-9]{6,20}$/.test(professionalId.trim())) {
-      return next(new AppError('Expert ID must be 6-20 alphanumeric characters', 400));
-    }
-    if (role === 'vendor' && !/^[A-Za-z0-9-]{5,25}$/.test(professionalId.trim())) {
-      return next(new AppError('Vendor ID must be 5-25 alphanumeric characters (hyphens allowed)', 400));
-    }
   }
 
   next();

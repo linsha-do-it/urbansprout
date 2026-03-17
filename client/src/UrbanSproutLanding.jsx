@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { apiCall } from '@/utils/api'
 import Logo from './components/Logo'
+import { LandingAccordionItem } from '@/components/ui/interactive-image-accordion'
+import { TypewriterTestimonial } from '@/components/ui/typewriter-testimonial'
 
 const UrbanSproutLanding = () => {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -40,94 +42,54 @@ const UrbanSproutLanding = () => {
     fetchCommunityStats()
   }, [])
 
-  const communityPosts = [
+  const testimonialBubbles = [
     {
-      text: "UrbanSprout is literally chef's kiss! 🍅 My cherry tomatoes are popping off in Mumbai balcony. The reminders are so clutch!",
-      name: "Priya Sharma",
-      city: "Mumbai",
-      avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face"
+      image:
+        'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=200&h=200&fit=crop&crop=face',
+      audio: '',
+      text: "UrbanSprout is literally chef's kiss! 🍅 My cherry tomatoes are popping off in my Mumbai balcony. The reminders are so clutch!",
+      name: 'Priya Sharma',
+      jobtitle: 'Beginner plant parent, Mumbai',
     },
     {
-      text: "UrbanSprout sherikkum adipoli! 🌿 My spinach harvest is absolutely fire! Tracking system next level aanu - never missed watering even during my crazy work schedule.",
-      name: "Linsha Ajsal",
-      city: "Kerala",
-      avatar: "https://share.icloud.com/photos/0204qPBQZ2J-bHssJW_k75l1w"
+      image: 'https://share.icloud.com/photos/0204qPBQZ2J-bHssJW_k75l1w',
+      audio: '',
+      text: 'UrbanSprout sherikkum adipoli! 🌿 My spinach harvest is absolutely fire! Tracking system next level aanu – never missed watering even in my busy schedule.',
+      name: 'Linsha Ajsal',
+      jobtitle: 'Urban gardener, Kerala',
     },
     {
-      text: "Bell peppers thriving in my Bangalore kitchen! This app is pure gold ✨",
-      name: "Fathima Ali",
-      city: "Bangalore",
-      avatar: "https://media.istockphoto.com/id/1429143997/photo/confident-muslim-woman-looking-away-traveling-in-new-york.jpg?s=2048x2048&w=is&k=20&c=10-LbFvCUUp60L1NngPF14bdxDYM-_b1tdzjnAfeDII="
+      image:
+        'https://media.istockphoto.com/id/1429143997/photo/confident-muslim-woman-looking-away-traveling-in-new-york.jpg?s=200&h=200&fit=crop&crop=face',
+      audio: '',
+      text: 'Bell peppers thriving in my Bangalore kitchen! This app is pure gold ✨.',
+      name: 'Fathima Ali',
+      jobtitle: 'Balcony gardener, Bangalore',
     },
     {
-      text: "Cucumber plants were looking sus, but UrbanSprout community came through! These people really know their stuff!",
-      name: "Rohan Singh",
-      city: "Pune",
-      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face"
+      image:
+        'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop&crop=face',
+      audio: '',
+      text: 'Cucumber plants were looking sus, but the UrbanSprout community came through. These people really know their stuff!',
+      name: 'Rohan Singh',
+      jobtitle: 'Community member, Pune',
     },
     {
-      text: "UrbanSprout ரொம்ப நல்லா இருக்கு! 🍓 என் பால்கனியில் ஸ்ட்ராபெர்ரி வளர்த்தது அடி பூமி! டெய்லி ரிமைண்டர்ஸ் ரொம்ப ஹெல்ப்ஃபுல் - இந்த ஆப் சூப்பர்!",
-      name: "Ayisha Mohammed",
-      city: "Tamil Nadu",
-      avatar: "https://images.unsplash.com/photo-1689083591947-a67106e7841e?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1287"
+      image:
+        'https://images.unsplash.com/photo-1689083591947-a67106e7841e?w=200&h=200&fit=crop&crop=face',
+      audio: '',
+      text: "UrbanSprout ரொம்ப நல்லா இருக்கு! 🍓 என் பால்கனியில் ஸ்ட்ராபெர்ரி வளர்த்தது அடி பூமி! டெய்லி ரிமைண்டர்ஸ் ரொம்ப ஹெல்ப்ஃபுல் – இந்த ஆப் சூப்பர்!",
+      name: 'Ayisha Mohammed',
+      jobtitle: 'Strawberry grower, Tamil Nadu',
     },
     {
-      text: "Vertical lettuce growing in my tiny Mumbai kitchen is hitting different! UrbanSprout's space optimization tips are straight up genius!",
-      name: "Kavya Reddy",
-      city: "Mumbai",
-      avatar: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=100&h=100&fit=crop&crop=face"
+      image:
+        'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=200&h=200&fit=crop&crop=face',
+      audio: '',
+      text: "Vertical lettuce in my tiny Mumbai kitchen is hitting different! UrbanSprout's space tips are straight up genius.",
+      name: 'Kavya Reddy',
+      jobtitle: 'Kitchen gardener, Mumbai',
     },
-    {
-      text: "UrbanSprout bilkul mast hai! 🥕 My carrots from Delhi terrace = chef's kiss! App kaafi helpful hai - tracking system zabardast hai!",
-      name: "Mohammed Ali",
-      city: "Delhi",
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face"
-    }
-  ]
-
-  const bottomRowPosts = [
-    {
-      text: "UrbanSprout's microgreens guide is absolutely slaying! 🌱 Growing fresh greens in my Kochi kitchen has never been this easy.",
-      name: "Ameena Rahman",
-      city: "Kerala",
-      avatar: "https://media.istockphoto.com/id/1764234653/photo/mother-and-her-baby-girl-on-the-beach.jpg?s=2048x2048&w=is&k=20&c=xbBzVbEUC5MkLA1p3eQNojrN3RlPdBHujn6ZWiJLp44="
-    },
-    {
-      text: "ത്രിവേന്ദ്രം ഫ്ലാറ്റിലേയും ടെറസിലേയും പുതിനയും കൊത്തമ്പുല്ലും ഇങ്ങനെ ഫ്രെഷായി വളർത്താം എന്നുള്ളത് പൊളി ആണേ! 😍 സ്പേസ് കുറവാണെങ്കിലും UrbanSprout ടിപ്പ്സും ഐഡിയാസും കൊടുത്താൽ ചെടികൾ പറക്കും പോലെ വളരും! 🌿🔥 ശെരിക്കും അടിപൊളി ആപ്പ് മച്ചാനേ! 👏",
-      name: "Deepa Nair",
-      city: "Kerala",
-      avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face"
-    },
-    {
-      text: "UrbanSprout's herb garden recommendations for my Kolkata balcony are chef's kiss! 🌿",
-      name: "Sourav Das",
-      city: "Kolkata",
-      avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&h=100&fit=crop&crop=face"
-    },
-    {
-      text: "हैदराबाद में मेरे बालकनी का टमाटर हार्वेस्ट बिल्कुल जबरदस्त है! 🍅 UrbanSprout का सनलाइट ट्रैकिंग फीचर मेरे बालकनी के माइक्रोक्लाइमेट को समझने में काफी मददगार रहा!",
-      name: "Rajesh Kumar",
-      city: "Hyderabad",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face"
-    },
-    {
-      text: "Chilli plants thriving in my Kozhikode kitchen! UrbanSprout's beginner-friendly approach made everything so simple. The daily tracking features are clutch!",
-      name: "Nisha Menon",
-      city: "Kerala",
-      avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face"
-    },
-    {
-      text: "Cucumber harvest in Ahmedabad is bussin'! 🥒",
-      name: "Vikram Patel",
-      city: "Ahmedabad",
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face"
-    },
-    {
-      text: "UrbanSprout's vertical gardening tips for my small Jaipur terrace are absolutely legendary! The space optimization features are game-changing.",
-      name: "Priyanka Sharma",
-      city: "Jaipur",
-      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop&crop=face"
-    }
   ]
 
   return (
@@ -219,126 +181,62 @@ const UrbanSproutLanding = () => {
       <section className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 pt-[82px]">
         <div className="absolute inset-0 bg-gradient-to-br from-amber-100/30 via-orange-100/30 to-yellow-100/30"></div>
         <div className="relative z-10 text-center px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-semibold text-gray-900 mb-6 leading-tight tracking-tight fk-grotesk">
-            Grow Your Garden,<br />
-            <span className="bg-gradient-to-r from-forest-green-600 to-forest-green-700 bg-clip-text text-transparent">No Matter the Concrete.</span>
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-gray-900 mb-6 leading-tight tracking-tight fk-grotesk">
+            Everyone wants to start growing plants,<br />
+            <span className="bg-gradient-to-r from-forest-green-600 to-forest-green-700 bg-clip-text text-transparent">
+              but few know where to begin.
+            </span>
           </h1>
           <p className="text-xl sm:text-2xl text-gray-700 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Your personal guide to planting success, tailored to your available space, time, and sunlight conditions.
+            UrbanSprout makes that first step simple, confident, and fun—with guidance tailored to your space, time, and sunlight.
           </p>
           <div className="flex justify-center items-center">
-            <a href="/signup" className="bg-gradient-to-r from-forest-green-600 to-forest-green-700 hover:from-forest-green-700 hover:to-forest-green-800 text-white px-8 py-4 rounded-lg text-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg">
-              Start Planting Today
+            <a
+              href="/signup"
+              className="bg-gradient-to-r from-forest-green-600 to-forest-green-700 hover:from-forest-green-700 hover:to-forest-green-800 text-white px-8 py-4 rounded-lg text-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
+            >
+              Start your plant journey
             </a>
           </div>
         </div>
       </section>
 
-      {/* Student Success Stories Section */}
+      {/* User Types Section – interactive accordion */}
+      <LandingAccordionItem />
+
+      {/* Student Success Stories Section – typewriter testimonials */}
       <section className="py-20 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <p className="text-sm text-gray-500 mb-2 font-light">
               Student Success Stories
             </p>
-            <h2 className="text-4xl sm:text-5xl font-semibold text-gray-900 mb-6" style={{ fontFamily: '"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+            <h2
+              className="text-4xl sm:text-5xl font-semibold text-gray-900 mb-4"
+              style={{
+                fontFamily:
+                  '"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+              }}
+            >
               What our gardeners are saying
             </h2>
-            <p className="text-base text-gray-600 max-w-4xl mx-auto mb-12">
-              Real stories from our growing community across India who are transforming their urban spaces into thriving green sanctuaries with UrbanSprout.
+            <p className="text-base text-gray-600 max-w-4xl mx-auto mb-8">
+              Hover on each face to hear a little story from gardeners across India who are turning concrete into green
+              spaces with UrbanSprout.
             </p>
-            <a href="/signup" className="inline-block bg-white hover:bg-gray-50 text-gray-900 px-8 py-3 rounded-lg font-medium transition-colors duration-300 transform hover:scale-105 hover:shadow-lg border border-gray-200">
+          </div>
+
+          <div className="flex justify-center mb-10">
+            <TypewriterTestimonial testimonials={testimonialBubbles} />
+          </div>
+
+          <div className="text-center">
+            <a
+              href="/signup"
+              className="inline-block bg-white hover:bg-gray-50 text-gray-900 px-8 py-3 rounded-lg font-medium transition-colors duration-300 transform hover:scale-105 hover:shadow-lg border border-gray-200"
+            >
               Join Our Community
             </a>
-          </div>
-          
-          {/* Animated Community Posts */}
-          <div className="relative overflow-hidden">
-            {/* Left sliding posts */}
-            <div className="relative">
-              {/* Left fade gradient */}
-              <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-amber-50 via-amber-50/80 to-transparent z-10 pointer-events-none"></div>
-              {/* Right fade gradient */}
-              <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-amber-50 via-amber-50/80 to-transparent z-10 pointer-events-none"></div>
-              
-              <div className="flex animate-scroll space-x-6 max-w-4xl mx-auto">
-                {communityPosts.map((post, index) => (
-                <div 
-                    key={`left-${index}`}
-                    className="flex-shrink-0 bg-white rounded-2xl shadow-lg p-8 w-[400px] h-[280px] border border-gray-100 hover:shadow-xl transition-shadow duration-300"
-                  >
-                    <div className="h-full flex flex-col justify-between">
-                      <p className="text-gray-700 text-sm leading-relaxed flex-1">{post.text}</p>
-                      <div className="flex items-center mt-4 pt-4 border-t border-gray-100">
-                        <div className="w-8 h-8 rounded-full overflow-hidden">
-                          <img 
-                            src={post.avatar} 
-                            alt={post.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                              e.target.nextSibling.style.display = 'flex';
-                            }}
-                          />
-                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center" style={{display: 'none'}}>
-                            <span className="text-green-600 text-sm font-semibold">
-                              {post.name.split(' ').map(n => n[0]).join('')}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="ml-3">
-                          <div className="text-sm font-medium text-gray-900">{post.name}</div>
-                          <div className="text-xs text-gray-500">{post.city}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            {/* Right sliding posts */}
-            <div className="relative mt-8">
-              {/* Left fade gradient */}
-              <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-amber-50 via-amber-50/80 to-transparent z-10 pointer-events-none"></div>
-              {/* Right fade gradient */}
-              <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-amber-50 via-amber-50/80 to-transparent z-10 pointer-events-none"></div>
-              
-              <div className="flex animate-scroll-reverse space-x-6 max-w-4xl mx-auto">
-                {bottomRowPosts.map((post, index) => (
-                  <div 
-                    key={`right-${index}`}
-                    className="flex-shrink-0 bg-white rounded-2xl shadow-lg p-8 w-[400px] h-[280px] border border-gray-100 hover:shadow-xl transition-shadow duration-300"
-                >
-                  <div className="h-full flex flex-col justify-between">
-                      <p className="text-gray-700 text-sm leading-relaxed flex-1">{post.text}</p>
-                    <div className="flex items-center mt-4 pt-4 border-t border-gray-100">
-                        <div className="w-8 h-8 rounded-full overflow-hidden">
-                          <img 
-                            src={post.avatar} 
-                            alt={post.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                              e.target.nextSibling.style.display = 'flex';
-                            }}
-                          />
-                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center" style={{display: 'none'}}>
-                        <span className="text-green-600 text-sm font-semibold">
-                              {post.name.split(' ').map(n => n[0]).join('')}
-                        </span>
-                          </div>
-                        </div>
-                        <div className="ml-3">
-                          <div className="text-sm font-medium text-gray-900">{post.name}</div>
-                          <div className="text-xs text-gray-500">{post.city}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                </div>
-            </div>
           </div>
         </div>
       </section>

@@ -1,7 +1,10 @@
 /.zencoder
 
 # Environment files (ignore in all directories)
-#.env
+.env
+server/.env
+client/.env
+server/.envnew
 
 # OS files
 .DS_Store

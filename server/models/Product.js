@@ -188,6 +188,12 @@ const productSchema = new mongoose.Schema({
 });
 
 // Indexes for efficient queries
+productSchema.index({ published: 1, archived: 1, createdAt: -1 });
+productSchema.index({ category: 1, published: 1, archived: 1 });
+productSchema.index({ regularPrice: 1, discountPrice: 1 });
+productSchema.index({ rating: -1, published: 1 });
+productSchema.index({ name: 1, published: 1 });
+// Existing indexes
 productSchema.index({ category: 1, published: 1 });
 productSchema.index({ name: 'text', description: 'text' });
 productSchema.index({ sku: 1 });

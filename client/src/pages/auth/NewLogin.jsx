@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Eye, 
-  EyeOff, 
-  Mail, 
-  Lock, 
-  Leaf, 
-  ArrowRight, 
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  Leaf,
+  ArrowRight,
   CheckCircle,
   AlertCircle,
   Loader2,
@@ -24,12 +24,13 @@ import Logo from '../../components/Logo';
 const NewLogin = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
-  
+
   const [formData, setFormData] = useState({
     email: '',
-    password: ''
+    password: '',
+    role: 'beginner'
   });
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -73,7 +74,7 @@ const NewLogin = () => {
   const processGoogleUser = async (user) => {
     setLoading(true);
     setError('');
-    
+
     try {
       const idToken = await user.getIdToken();
       console.log('Processing Google user:', user.email);
@@ -84,11 +85,11 @@ const NewLogin = () => {
         role: 'beginner',
         name: user.displayName || 'User'
       });
-      
+
       if (response.success) {
         const token = response.token || response.data?.token;
         const userData = response.user || response.data?.user;
-        
+
         if (token && userData) {
           console.log('Google sign-in successful:', userData.email);
           login(userData, token);
@@ -110,12 +111,12 @@ const NewLogin = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     // Clear field error when user starts typing
     if (fieldErrors[name]) {
       setFieldErrors(prev => ({ ...prev, [name]: '' }));
     }
-    
+
     // Clear general error
     if (error) setError('');
     if (successMessage) setSuccessMessage('');
@@ -124,7 +125,7 @@ const NewLogin = () => {
   // Handle forgot password
   const handleForgotPassword = async (e) => {
     e.preventDefault();
-    
+
     if (!forgotPasswordEmail) {
       setForgotPasswordMessage('Please enter your email address');
       return;
@@ -140,7 +141,7 @@ const NewLogin = () => {
 
     try {
       const response = await authAPI.forgotPassword({ email: forgotPasswordEmail });
-      
+
       if (response.success) {
         if (response.resetUrl) {
           setForgotPasswordMessage(response.message);
@@ -164,33 +165,41 @@ const NewLogin = () => {
 
   const validateForm = () => {
     const errors = {};
-    
+
     if (!formData.email) {
       errors.email = 'Email is required';
     } else if (!validateEmail(formData.email)) {
       errors.email = 'Please enter a valid email address';
     }
-    
+
     if (!formData.password) {
       errors.password = 'Password is required';
     }
-    
+
+    if (!formData.role) {
+      errors.role = 'Please select your role';
+    }
+
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setLoading(true);
     setError('');
     setSuccessMessage('');
-    
+
     try {
-      const response = await authAPI.login(formData);
-      
+      const response = await authAPI.login({
+        email: formData.email,
+        password: formData.password,
+        role: formData.role
+      });
+
       if (response.success) {
         // Handle Remember Me functionality
         if (rememberMe) {
@@ -198,20 +207,20 @@ const NewLogin = () => {
         } else {
           localStorage.removeItem('rememberedEmail');
         }
-        
+
         console.log('Login successful, user data:', response.data.user);
         console.log('User role:', response.data.user.role);
-        
+
         setSuccessMessage('Login successful! Redirecting...');
-        
+
         // Small delay to show success message
         setTimeout(() => {
           login(response.data.user, response.data.token);
-          
+
           // Redirect based on user role
           const userRole = response.data.user.role;
           console.log('Redirecting based on role:', userRole);
-          
+
           switch (userRole) {
             case 'admin':
               console.log('Redirecting to admin dashboard');
@@ -219,11 +228,11 @@ const NewLogin = () => {
               break;
             case 'vendor':
               console.log('Redirecting to vendor dashboard');
-              navigate('/vendor/dashboard');
+              navigate('/dashboard');
               break;
             case 'expert':
               console.log('Redirecting to expert dashboard');
-              navigate('/expert/dashboard');
+              navigate('/dashboard');
               break;
             default:
               console.log('Redirecting to regular dashboard');
@@ -241,16 +250,16 @@ const NewLogin = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     setError('');
-    
+
     try {
       console.log('Initiating Google Sign-In...');
       const result = await signInWithGoogle();
-      
+
       if (result === null) {
         console.log('Redirect method used, waiting for page reload...');
         return;
       }
-      
+
       if (result && result.user) {
         console.log('Popup method successful:', result.user.email);
         await processGoogleUser(result.user);
@@ -292,7 +301,7 @@ const NewLogin = () => {
             </motion.div>
           </Link>
           <Link to="/" className="block mb-4">
-            <motion.h1 
+            <motion.h1
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
@@ -350,6 +359,48 @@ const NewLogin = () => {
             </AnimatePresence>
 
             <div className="space-y-5">
+              {/* Role Selection */}
+              <div>
+                <label htmlFor="role" className="block text-sm font-medium text-forest-green-700 mb-2">
+                  I am a
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { value: 'beginner', label: 'Beginner', icon: '🌱' },
+                    { value: 'expert', label: 'Expert', icon: '🌿' },
+                    { value: 'vendor', label: 'Vendor', icon: '🏪' },
+                  ].map((roleOption) => (
+                    <button
+                      key={roleOption.value}
+                      type="button"
+                      onClick={() => {
+                        setFormData(prev => ({ ...prev, role: roleOption.value }));
+                        if (fieldErrors.role) {
+                          setFieldErrors(prev => ({ ...prev, role: '' }));
+                        }
+                      }}
+                      className={`px-4 py-3 rounded-xl border-2 transition-all duration-200 text-sm font-medium ${formData.role === roleOption.value
+                          ? 'border-forest-green-600 bg-forest-green-50 text-forest-green-800 shadow-md'
+                          : 'border-forest-green-200 bg-white text-forest-green-700 hover:border-forest-green-300 hover:bg-forest-green-50'
+                        } ${fieldErrors.role ? 'border-red-300' : ''}`}
+                    >
+                      <span className="text-lg mr-2">{roleOption.icon}</span>
+                      {roleOption.label}
+                    </button>
+                  ))}
+                </div>
+                {fieldErrors.role && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="mt-1 text-sm text-red-600 flex items-center"
+                  >
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {fieldErrors.role}
+                  </motion.p>
+                )}
+              </div>
+
               {/* Email Field */}
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-forest-green-700 mb-2">
@@ -366,14 +417,13 @@ const NewLogin = () => {
                     autoComplete="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className={`w-full pl-10 pr-3 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-forest-green-500 focus:border-transparent transition-all duration-200 ${
-                      fieldErrors.email ? 'border-red-300 bg-red-50' : 'border-forest-green-200 hover:border-forest-green-300'
-                    }`}
+                    className={`w-full pl-10 pr-3 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-forest-green-500 focus:border-transparent transition-all duration-200 ${fieldErrors.email ? 'border-red-300 bg-red-50' : 'border-forest-green-200 hover:border-forest-green-300'
+                      }`}
                     placeholder="Enter your email"
                   />
                 </div>
                 {fieldErrors.email && (
-                  <motion.p 
+                  <motion.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className="mt-1 text-sm text-red-600 flex items-center"
@@ -400,9 +450,8 @@ const NewLogin = () => {
                     autoComplete="current-password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    className={`w-full pl-10 pr-10 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-forest-green-500 focus:border-transparent transition-all duration-200 ${
-                      fieldErrors.password ? 'border-red-300 bg-red-50' : 'border-forest-green-200 hover:border-forest-green-300'
-                    }`}
+                    className={`w-full pl-10 pr-10 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-forest-green-500 focus:border-transparent transition-all duration-200 ${fieldErrors.password ? 'border-red-300 bg-red-50' : 'border-forest-green-200 hover:border-forest-green-300'
+                      }`}
                     placeholder="Enter your password"
                   />
                   <button
@@ -418,7 +467,7 @@ const NewLogin = () => {
                   </button>
                 </div>
                 {fieldErrors.password && (
-                  <motion.p 
+                  <motion.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className="mt-1 text-sm text-red-600 flex items-center"
@@ -495,10 +544,10 @@ const NewLogin = () => {
               className="w-full flex justify-center items-center py-3 px-4 border border-forest-green-300 rounded-xl shadow-sm text-sm font-medium text-forest-green-700 bg-white hover:bg-forest-green-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-forest-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             >
               <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
               </svg>
               Sign in with Google
             </motion.button>
@@ -594,11 +643,10 @@ const NewLogin = () => {
                   </div>
 
                   {forgotPasswordMessage && !resetUrl && (
-                    <div className={`mb-4 p-3 rounded-lg text-sm ${
-                      forgotPasswordMessage.includes('successfully') 
-                        ? 'bg-green-50 text-green-700 border border-green-200' 
+                    <div className={`mb-4 p-3 rounded-lg text-sm ${forgotPasswordMessage.includes('successfully')
+                        ? 'bg-green-50 text-green-700 border border-green-200'
                         : 'bg-red-50 text-red-700 border border-red-200'
-                    }`}>
+                      }`}>
                       {forgotPasswordMessage}
                     </div>
                   )}
@@ -608,7 +656,7 @@ const NewLogin = () => {
                       <div className="mt-3">
                         <p className="font-medium mb-2">Click the link below to reset your password:</p>
                         <div className="bg-gray-100 p-2 rounded border">
-                          <a 
+                          <a
                             href={resetUrl}
                             target="_blank"
                             rel="noopener noreferrer"

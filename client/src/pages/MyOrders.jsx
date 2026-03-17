@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -31,32 +31,47 @@ const MyOrders = () => {
   const [selectedOrderItem, setSelectedOrderItem] = useState(null);
   const [reviewData, setReviewData] = useState({ rating: 5, comment: '' });
 
-  // Load user orders
-  useEffect(() => {
-    const loadOrders = async () => {
-      if (!user) return;
-      
-      setLoading(true);
-      try {
-        const response = await apiCall('/store/orders/my');
-        if (response.success) {
-          // API may return either { data: ordersArray } or { data: { orders: [] } }
-          const data = response.data;
-          const normalized = Array.isArray(data) ? data : (data?.orders || data?.data || []);
-          setOrders(normalized || []);
-        } else {
-          setError('Failed to load orders');
-        }
-      } catch (error) {
-        console.error('Error loading orders:', error);
+  // Load user orders (refetch when vendor updates status so customer sees it)
+  const loadOrders = useCallback(async (showLoading = true) => {
+    if (!user) return;
+    if (showLoading) setLoading(true);
+    try {
+      const response = await apiCall('/store/orders/my');
+      if (response.success) {
+        const data = response.data;
+        const normalized = Array.isArray(data) ? data : (data?.orders || data?.data || []);
+        setOrders(normalized || []);
+      } else {
         setError('Failed to load orders');
-      } finally {
-        setLoading(false);
       }
-    };
-
-    loadOrders();
+    } catch (err) {
+      console.error('Error loading orders:', err);
+      setError('Failed to load orders');
+    } finally {
+      if (showLoading) setLoading(false);
+    }
   }, [user]);
+
+  useEffect(() => {
+    loadOrders(true);
+  }, [loadOrders]);
+
+  // Poll so status updates from vendor (e.g. mark as completed) show up
+  const POLL_MS = 30000;
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => loadOrders(false), POLL_MS);
+    return () => clearInterval(interval);
+  }, [user, loadOrders]);
+
+  // Refetch when user returns to this tab so they see latest status
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') loadOrders(false);
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [loadOrders]);
 
   // Separate orders into upcoming and previous
   const upcomingOrders = orders.filter(order => 

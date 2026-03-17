@@ -93,3 +93,4 @@ If you need to customize the logo further or have issues:
 2. Ensure your logo file path matches exactly: `urbansprout-logo.png`
 3. Try different image formats (PNG, SVG, JPG)
 4. Make sure the file size isn't too large (< 1MB recommended)
+

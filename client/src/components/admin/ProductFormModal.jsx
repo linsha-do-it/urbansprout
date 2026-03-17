@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, 
-  Upload, 
   Plus, 
   Trash2, 
   Package,
@@ -13,7 +12,7 @@ import {
 } from 'lucide-react';
 
 const ProductFormModal = ({ title, formData, setFormData, onSubmit, onClose, categories, availableDiscounts = [] }) => {
-  const [imageFiles, setImageFiles] = useState([]);
+  const [imageUrlInput, setImageUrlInput] = useState('');
   const [imageUrls, setImageUrls] = useState(formData.images || []);
   const [priceValidation, setPriceValidation] = useState({
     regularPriceError: '',
@@ -124,62 +123,44 @@ const ProductFormModal = ({ title, formData, setFormData, onSubmit, onClose, cat
     }
   };
 
-  const handleImageUpload = async (e) => {
-    const files = Array.from(e.target.files);
+  const handleAddImageUrl = () => {
+    if (!imageUrlInput.trim()) {
+      alert('Please enter a valid image URL');
+      return;
+    }
+
+    // Validate URL format
+    try {
+      new URL(imageUrlInput);
+    } catch (e) {
+      alert('Please enter a valid image URL');
+      return;
+    }
     
-    // Validate file types and sizes
-    const validFiles = files.filter(file => {
-      const isValidType = file.type.startsWith('image/');
-      const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB limit
-      
-      if (!isValidType) {
-        alert(`${file.name} is not a valid image file.`);
-        return false;
-      }
-      if (!isValidSize) {
-        alert(`${file.name} is too large. Maximum size is 5MB.`);
-        return false;
-      }
-      return true;
-    });
-    
-    if (validFiles.length === 0) return;
-    
-    setImageFiles(prev => [...prev, ...validFiles]);
-    
-    // Convert files to base64 for storage
-    const base64Images = await Promise.all(
-      validFiles.map(file => {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-      })
-    );
-    
-    // Create preview URLs for display
-    const newUrls = validFiles.map(file => URL.createObjectURL(file));
-    setImageUrls(prev => [...prev, ...newUrls]);
-    
-    // Store base64 images in form data
-    setFormData(prev => ({
-      ...prev,
-      images: [...prev.images, ...base64Images]
-    }));
+    // Verify that the image is actually loadable before saving
+    const urlToTest = imageUrlInput.trim();
+    const img = new Image();
+    img.onload = () => {
+      const newUrls = [...imageUrls, urlToTest];
+      setImageUrls(newUrls);
+      setFormData(prev => ({
+        ...prev,
+        images: newUrls
+      }));
+      setImageUrlInput('');
+    };
+    img.onerror = () => {
+      alert('That image URL could not be loaded. Please check the link and try again.');
+    };
+    img.src = urlToTest;
   };
 
   const removeImage = (index) => {
-    // Clean up the preview URL to prevent memory leaks
-    if (imageUrls[index] && imageUrls[index].startsWith('blob:')) {
-      URL.revokeObjectURL(imageUrls[index]);
-    }
-    
-    setImageUrls(prev => prev.filter((_, i) => i !== index));
+    const newUrls = imageUrls.filter((_, i) => i !== index);
+    setImageUrls(newUrls);
     setFormData(prev => ({
       ...prev,
-      images: prev.images.filter((_, i) => i !== index)
+      images: newUrls
     }));
   };
 
@@ -468,51 +449,64 @@ const ProductFormModal = ({ title, formData, setFormData, onSubmit, onClose, cat
 
             {/* Images */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Product Images</label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-                <div className="text-center">
-                  <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                  <div className="mt-4">
-                    <label htmlFor="image-upload" className="cursor-pointer">
-                      <span className="mt-2 block text-sm font-medium text-gray-900">
-                        Upload product images
-                      </span>
-                      <input
-                        id="image-upload"
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="sr-only"
-                      />
-                    </label>
-                    <p className="mt-1 text-xs text-gray-500">
-                      PNG, JPG, GIF up to 5MB each. Multiple images will be shown as a slideshow.
-                    </p>
-                  </div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Product Images (URLs)</label>
+              <div className="space-y-4">
+                {/* URL Input */}
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={imageUrlInput}
+                    onChange={(e) => setImageUrlInput(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddImageUrl();
+                      }
+                    }}
+                    placeholder="Enter image URL (e.g., https://example.com/image.jpg)"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddImageUrl}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add
+                  </button>
                 </div>
                 
                 {/* Image Preview */}
                 {imageUrls.length > 0 && (
-                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {imageUrls.map((url, index) => (
                       <div key={index} className="relative">
                         <img
                           src={url}
                           alt={`Preview ${index + 1}`}
-                          className="w-full h-24 object-cover rounded-lg"
+                          className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                          onError={(e) => {
+                            e.target.src = 'https://via.placeholder.com/150?text=Invalid+URL';
+                          }}
                         />
                         <button
                           type="button"
                           onClick={() => removeImage(index)}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                          title="Remove image"
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-4 w-4" />
                         </button>
+                        <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 truncate">
+                          {url.length > 30 ? url.substring(0, 30) + '...' : url}
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
+                <p className="text-xs text-gray-500">
+                  Enter image URLs and click Add to add them to your product. Multiple images will be shown as a slideshow in the store.
+                </p>
               </div>
             </div>
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiCall } from '../../utils/api';
 import { FaCrown, FaUsers, FaStore, FaChartLine, FaCog, FaLock, FaLeaf, FaShoppingBag, FaBox, FaFileAlt } from 'react-icons/fa';
@@ -6,6 +7,7 @@ import io from 'socket.io-client';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
   const [recentSystemActivity, setRecentSystemActivity] = useState([]);
@@ -18,9 +20,9 @@ const AdminDashboard = () => {
     loadDashboardData();
     
     // Connect to Socket.IO for real-time updates
-    const socket = io('http://localhost:5002', {
+    const socket = io('http://localhost:5001', {
       auth: {
-        token: localStorage.getItem('token')
+        token: localStorage.getItem('urbansprout_token')
       }
     });
 
@@ -130,9 +132,9 @@ const AdminDashboard = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
         {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-red-500 to-pink-600 rounded-lg p-6 text-white mb-8">
+        <div className="bg-gradient-to-r from-amber-800 to-amber-900 rounded-lg p-6 text-white mb-8">
           <h2 className="text-2xl font-bold mb-2">Admin Dashboard 👑</h2>
-          <p className="text-red-100">
+          <p className="text-amber-100">
             Manage the UrbanSprout platform and monitor system performance.
           </p>
         </div>
@@ -190,7 +192,7 @@ const AdminDashboard = () => {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <button className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left">
+          <button onClick={() => navigate('/admin/users')} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left">
             <div className="flex items-center mb-4">
               <div className="bg-blue-100 p-3 rounded-lg">
                 <FaUsers className="text-blue-600 text-xl" />
@@ -200,14 +202,17 @@ const AdminDashboard = () => {
             <p className="text-gray-600">Manage users, roles, and permissions</p>
           </button>
 
-          <button className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left">
+          <button 
+            onClick={() => navigate('/admin/inventory-insights')}
+            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left"
+          >
             <div className="flex items-center mb-4">
               <div className="bg-forest-green-100 p-3 rounded-lg">
-                <FaStore className="text-forest-green-500 text-xl" />
+                <FaChartLine className="text-forest-green-500 text-xl" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 ml-4">Vendor Approval</h3>
+              <h3 className="text-lg font-semibold text-gray-900 ml-4">Inventory Insights</h3>
             </div>
-            <p className="text-gray-600">Review and approve vendor applications</p>
+            <p className="text-gray-600">View analytics and inventory metrics</p>
           </button>
 
           <button className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left">
@@ -251,36 +256,7 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* System Health */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">System Health</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-700">Server Status</span>
-                <span className="px-2 py-1 text-xs bg-forest-green-100 text-forest-green-800 rounded-full">
-                  Healthy
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-700">Database</span>
-                <span className="px-2 py-1 text-xs bg-forest-green-100 text-forest-green-800 rounded-full">
-                  Connected
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-700">API Response Time</span>
-                <span className="text-gray-900 font-medium">145ms</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-700">Active Sessions</span>
-                <span className="text-gray-900 font-medium">234</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-700">Storage Used</span>
-                <span className="text-gray-900 font-medium">67%</span>
-              </div>
-            </div>
-          </div>
+        
         </div>
 
         {/* Additional Admin Tools */}

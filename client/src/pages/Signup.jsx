@@ -14,7 +14,8 @@ const Signup = () => {
     lastName: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    role: 'beginner'
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -32,7 +33,7 @@ const Signup = () => {
         name: `${formData.firstName} ${formData.lastName}`.trim(),
         email: formData.email,
         password: formData.password,
-        role: 'beginner'
+        role: formData.role
       })
       if (response.success) {
         localStorage.setItem('urbansprout_token', response.data.token)
@@ -93,6 +94,36 @@ const Signup = () => {
             </div>
           )}
           <div className="space-y-4">
+            {/* Role Selection */}
+            <div>
+              <label className="block text-sm font-medium text-forest-green-700 mb-2">
+                I am a
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { value: 'beginner', label: 'Beginner', icon: '🌱' },
+                  { value: 'expert', label: 'Expert', icon: '🌿' },
+                  { value: 'vendor', label: 'Vendor', icon: '🏪' }
+                ].map((roleOption) => (
+                  <button
+                    key={roleOption.value}
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, role: roleOption.value }))
+                    }}
+                    className={`px-4 py-3 rounded-lg border-2 transition-all duration-200 text-sm font-medium ${
+                      formData.role === roleOption.value
+                        ? 'border-forest-green-600 bg-forest-green-50 text-forest-green-800 shadow-md'
+                        : 'border-forest-green-200 bg-white text-forest-green-700 hover:border-forest-green-300 hover:bg-forest-green-50'
+                    }`}
+                  >
+                    <span className="text-lg mr-2">{roleOption.icon}</span>
+                    {roleOption.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Name Fields */}
             <div className="grid grid-cols-2 gap-4">
               <div>

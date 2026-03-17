@@ -194,9 +194,9 @@ function displaySetupInstructions() {
   console.log('   • Local MongoDB - Good for development');
   console.log('   • Docker MongoDB - Consistent across environments');
   console.log('');
-  console.log('2. 📝 Create .env file with your MONGODB_URI');
-  console.log('   • Copy the template from DATABASE_SETUP_GUIDE.md');
-  console.log('   • Update with your actual connection string');
+  console.log('2. 📝 Create server/.env with MONGODB_URI');
+  console.log('   • Add MONGODB_URI=your_connection_string to server/.env');
+  console.log('   • See README.md for setup instructions');
   console.log('');
   console.log('3. 🧪 Test your setup:');
   console.log('   • Run: node scripts/setupPermanentDatabase.js');
@@ -210,7 +210,7 @@ function displaySetupInstructions() {
   console.log('   • Run: node scripts/backupDatabase.js');
   console.log('   • Schedule regular backups');
   console.log('');
-  console.log('📖 For detailed instructions, see: DATABASE_SETUP_GUIDE.md');
+  console.log('📖 For setup instructions, see the project README.md');
 }
 
 async function main() {

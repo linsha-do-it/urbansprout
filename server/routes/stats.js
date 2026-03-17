@@ -2,9 +2,17 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Plant = require('../models/Plant');
+const { isDbConnected } = require('../config/database');
 
 // Get community statistics
 router.get('/community', async (req, res) => {
+  if (!isDbConnected()) {
+    return res.status(503).json({
+      success: false,
+      message: 'Database temporarily unavailable.',
+      data: { totalUsers: 0, totalPlants: 0, citiesCount: 0 }
+    });
+  }
   try {
     // Count total users (excluding admins)
     const totalUsers = await User.countDocuments({ 

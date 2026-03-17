@@ -6,7 +6,8 @@ import {
   FileText, 
   ShoppingBag, 
   Cog,
-  BarChart3
+  BarChart3,
+  TrendingUp
 } from 'lucide-react';
 import Navbar from '../layout/Navbar';
 
@@ -19,6 +20,7 @@ const AdminLayout = ({ children }) => {
     { name: 'Blog Posts', path: '/admin/blog', icon: FileText },
     { name: 'Orders', path: '/admin/orders', icon: ShoppingBag },
     { name: 'Inventory Insights', path: '/admin/inventory-insights', icon: BarChart3 },
+    { name: 'Revenue Predictor', path: '/admin/revenue-predictor', icon: TrendingUp },
     { name: 'Settings', path: '/admin/settings', icon: Cog },
   ];
 

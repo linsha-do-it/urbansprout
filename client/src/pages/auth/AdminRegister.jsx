@@ -32,7 +32,7 @@ const AdminRegister = () => {
   // Test server connection
   const testServerConnection = useCallback(async () => {
     try {
-      const API_BASE_URL = 'http://localhost:5002/api';
+      const API_BASE_URL = 'http://localhost:5001/api';
       const response = await fetch(`${API_BASE_URL}/test`);
       const data = await response.json();
       console.log('Server connection test:', data);
@@ -56,7 +56,7 @@ const AdminRegister = () => {
     setEmailValidation(prev => ({ ...prev, isChecking: true }));
 
     try {
-      const API_BASE_URL = 'http://localhost:5002/api';
+      const API_BASE_URL = 'http://localhost:5001/api';
       console.log('Checking email availability for:', email);
       console.log('API URL:', `${API_BASE_URL}/auth/check-email`);
       

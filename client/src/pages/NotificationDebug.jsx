@@ -40,7 +40,7 @@ const NotificationDebug = () => {
         token: token ? 'Present' : 'Missing',
         unreadCount: unreadResponse.success ? unreadResponse.data.unreadCount : 'Error',
         notificationsCount: notificationsResponse.success ? notificationsResponse.data.notifications.length : 'Error',
-        apiBaseUrl: 'http://localhost:5002/api'
+        apiBaseUrl: 'http://localhost:5001/api'
       });
       
     } catch (err) {

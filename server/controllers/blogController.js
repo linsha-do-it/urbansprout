@@ -1,18 +1,38 @@
 const Blog = require('../models/Blog');
 const User = require('../models/User');
+const { Readable } = require('stream');
+const cloudinary = require('cloudinary').v2;
+const BeginnerUser = require('../models/BeginnerUser');
+const ExpertUser = require('../models/ExpertUser');
+const VendorUser = require('../models/VendorUser');
+const Admin = require('../models/Admin');
 const { AppError } = require('../middlewares/errorHandler');
 const { asyncHandler } = require('../middlewares/errorHandler');
 const notificationService = require('../utils/notificationService');
+const { analyzeBlogContent } = require('../services/blogModerationService');
+const { applyContentViolation } = require('../services/violationService');
 
-// @desc    Get all blog posts
+if (process.env.CLOUDINARY_URL) {
+  cloudinary.config();
+}
+
+// @desc    Get all blog posts (ranked)
 // @route   GET /api/blog
 // @access  Public
 const getAllPosts = asyncHandler(async (req, res) => {
-  const { category, tag, search, status = 'published', page = 1, limit = 10 } = req.query;
+  const {
+    category,
+    tag,
+    search,
+    status = 'published',
+    page = 1,
+    limit = 10,
+    sort = 'hot' // 'hot' (default), 'newest'
+  } = req.query;
   const skip = (parseInt(page) - 1) * parseInt(limit);
 
   // Build query - only show approved posts for public
-  let query = { 
+  let query = {
     status: 'published',
     approvalStatus: 'approved'
   };
@@ -33,20 +53,66 @@ const getAllPosts = asyncHandler(async (req, res) => {
     ];
   }
 
-  // Get posts with pagination
-  const posts = await Blog.find(query)
+  // Base query with pagination (DB-level sort mostly for 'newest' mode)
+  const baseQuery = Blog.find(query)
     .populate('authorId', 'name email avatar')
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit);
 
-  // Get total count for pagination
-  const total = await Blog.countDocuments(query);
+  const [posts, total] = await Promise.all([
+    baseQuery,
+    Blog.countDocuments(query)
+  ]);
+
+  // Increment views for each post in the feed (but don't wait for save)
+  posts.forEach(post => {
+    post.views = (post.views || 0) + 1;
+    post
+      .save()
+      .catch(err => console.error('Error incrementing post views:', err));
+  });
+
+  // If sort=newest, keep the createdAt order and return early
+  if (sort === 'newest') {
+    return res.json({
+      success: true,
+      data: {
+        posts,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit),
+          hasNext: page * limit < total,
+          hasPrev: page > 1
+        }
+      }
+    });
+  }
+
+  // Personalized "hot" ranking: weighted engagement + time decay + user preference boost
+
+  // Build a lightweight user profile from likes/bookmarks if user is logged in
+  let userProfile = null;
+  if (req.user && req.user._id) {
+    userProfile = await buildUserProfile(req.user._id);
+  }
+
+  const ranked = posts
+    .map(post => {
+      const hotScore = computeHotScore(post);
+      const userRelevance = computeUserRelevance(userProfile, post);
+      const finalScore = computeFinalScore(hotScore, userRelevance);
+      return { post, score: finalScore };
+    })
+    .sort((a, b) => b.score - a.score)
+    .map(x => x.post);
 
   res.json({
     success: true,
     data: {
-      posts,
+      posts: ranked,
       pagination: {
         page,
         limit,
@@ -56,6 +122,45 @@ const getAllPosts = asyncHandler(async (req, res) => {
         hasPrev: page > 1
       }
     }
+  });
+});
+
+// @desc    Upload blog image to Cloudinary, return URL
+// @route   POST /api/blog/upload-image
+// @access  Private (any authenticated user)
+const uploadBlogImage = asyncHandler(async (req, res) => {
+  if (!req.file || !req.file.buffer) {
+    throw new AppError('No image file provided', 400);
+  }
+
+  const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (!allowed.includes(req.file.mimetype)) {
+    throw new AppError('Invalid file type. Use JPEG, PNG or WebP.', 400);
+  }
+
+  if (!process.env.CLOUDINARY_URL) {
+    throw new AppError('Image upload is not configured', 503);
+  }
+
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { folder: 'urbansprout/blog-images' },
+      (err, result) => {
+        if (err) {
+          reject(new AppError(err.message || 'Upload failed', 500));
+          return;
+        }
+        if (!result || !result.secure_url) {
+          reject(new AppError('Upload failed', 500));
+          return;
+        }
+        res.status(200).json({ success: true, url: result.secure_url });
+        resolve();
+      }
+    );
+
+    const stream = Readable.from(req.file.buffer);
+    stream.pipe(uploadStream);
   });
 });
 
@@ -111,6 +216,30 @@ const getPostBySlug = asyncHandler(async (req, res, next) => {
 // @route   POST /api/blog
 // @access  Private
 const createPost = asyncHandler(async (req, res, next) => {
+  // Check whether the user is currently allowed to post (strike system)
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    return next(new AppError('User not found', 404));
+  }
+
+  if (user.status === 'suspended') {
+    return next(
+      new AppError(
+        'Your account is suspended due to repeated policy violations. You cannot create new blog posts.',
+        403
+      )
+    );
+  }
+
+  if (user.postingDisabledUntil && user.postingDisabledUntil > new Date()) {
+    return next(
+      new AppError(
+        'Blog posting is temporarily disabled on your account due to policy violations. Please try again later or contact support.',
+        403
+      )
+    );
+  }
+
   const {
     title,
     content,
@@ -120,6 +249,37 @@ const createPost = asyncHandler(async (req, res, next) => {
     image,
     status = 'published'
   } = req.body;
+
+  // Run automated toxicity analysis using transformer-based model
+  const moderationResult = await analyzeBlogContent(content || '');
+  const { overallScore, categories, moderationDecision } = moderationResult;
+
+  // Default blog status/approval based on moderation decision
+  let blogStatus = status;
+  let approvalStatus = 'approved';
+
+  if (moderationDecision === 'safe') {
+    blogStatus = 'published';
+    approvalStatus = 'approved';
+  } else if (moderationDecision === 'flagged') {
+    blogStatus = 'pending_approval';
+    approvalStatus = 'pending';
+  } else if (moderationDecision === 'removed') {
+    blogStatus = 'rejected';
+    approvalStatus = 'rejected';
+  }
+
+  // If content is severely harmful, do not publish at all and record violation
+  if (moderationDecision === 'removed') {
+    await applyContentViolation(user._id, 'Severe harmful blog content');
+
+    return next(
+      new AppError(
+        'Your blog post violates our community guidelines and cannot be published.',
+        400
+      )
+    );
+  }
 
   const post = await Blog.create({
     title,
@@ -131,17 +291,25 @@ const createPost = asyncHandler(async (req, res, next) => {
     author: req.user.name,
     authorEmail: req.user.email,
     authorId: req.user._id,
-    status
+    authorRole: req.user.role || 'beginner',
+    status: blogStatus,
+    approvalStatus,
+    toxicityScore: overallScore,
+    moderationStatus: moderationDecision,
+    moderationCategories: categories
   });
 
   res.status(201).json({
     success: true,
-    message: 'Blog post created successfully',
+    message:
+      moderationDecision === 'flagged'
+        ? 'Blog post submitted and sent for moderation review.'
+        : 'Blog post created and published successfully.',
     data: { post }
   });
 });
 
-// @desc    Update blog post
+// @desc    Update blog post (Admin only - direct update)
 // @route   PUT /api/blog/:id
 // @access  Private (Admin only)
 const updatePost = asyncHandler(async (req, res, next) => {
@@ -184,6 +352,128 @@ const updatePost = asyncHandler(async (req, res, next) => {
   });
 });
 
+// @desc    Submit edit request for blog post (User)
+// @route   POST /api/blog/:id/edit
+// @access  Private
+const submitEditRequest = asyncHandler(async (req, res, next) => {
+  const post = await Blog.findById(req.params.id);
+
+  if (!post) {
+    return next(new AppError('Blog post not found', 404));
+  }
+
+  // Check if the user is the author
+  if (post.authorId.toString() !== req.user._id.toString()) {
+    return next(new AppError('You can only edit your own posts', 403));
+  }
+
+  const {
+    title,
+    content,
+    excerpt,
+    category,
+    tags,
+    image
+  } = req.body;
+  const newContent = content || post.content || '';
+
+  // Run automated toxicity analysis for the edited content
+  const moderationResult = await analyzeBlogContent(newContent);
+  const { overallScore, categories, moderationDecision } = moderationResult;
+
+  // If content is severely harmful, do not accept the edit and record a violation
+  if (moderationDecision === 'removed') {
+    await applyContentViolation(req.user._id, 'Severe harmful blog edit content');
+
+    return next(
+      new AppError(
+        'Your edited content violates our community guidelines and cannot be saved.',
+        400
+      )
+    );
+  }
+
+  // If the edited content is safe, apply it immediately without admin review
+  if (moderationDecision === 'safe') {
+    if (title) post.title = title;
+    if (newContent) post.content = newContent;
+    post.excerpt = excerpt || newContent.substring(0, 200) + '...';
+    post.category = category || post.category;
+    post.tags = tags || [];
+    post.image = image || post.image;
+
+    post.toxicityScore = overallScore;
+    post.moderationStatus = moderationDecision;
+    post.moderationCategories = categories;
+
+    // If content is safe, ensure the post is fully approved and published
+    post.status = 'published';
+    post.approvalStatus = 'approved';
+    post.rejectionReason = undefined;
+
+    // Clear any pending edit flags since we're applying directly
+    post.pendingEdit = undefined;
+    post.isEditPending = false;
+
+    await post.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Blog post updated successfully.',
+      data: { post }
+    });
+  }
+
+  // Borderline content: save as a pending edit for admin review
+  post.pendingEdit = {
+    title,
+    content: newContent,
+    excerpt: excerpt || newContent.substring(0, 200) + '...',
+    category: category || post.category,
+    tags: tags || [],
+    image: image || post.image,
+    submittedAt: new Date(),
+    submittedBy: req.user._id
+  };
+
+  post.isEditPending = true;
+  post.approvalStatus = 'pending'; // Reset approval status while edit is pending
+  post.toxicityScore = overallScore;
+  post.moderationStatus = moderationDecision;
+  post.moderationCategories = categories;
+
+  await post.save();
+
+  // Send notification to admins (if you have admin notification logic)
+  try {
+    const User = require('../models/User');
+    const admins = await User.find({ role: 'admin' });
+
+    for (const admin of admins) {
+      await notificationService.sendNotification(admin._id, {
+        userEmail: admin.email,
+        type: 'blog_edit_pending',
+        title: '📝 Blog Post Edit Pending Approval',
+        message: `User ${req.user.name} submitted an edit to blog post "${post.title}"`,
+        relatedId: post._id,
+        relatedModel: 'Blog'
+      });
+    }
+    console.log(`✅ Edit notification sent to admins`);
+  } catch (notificationError) {
+    console.error('❌ Failed to send edit notification:', notificationError);
+  }
+
+  res.status(201).json({
+    success: true,
+    message:
+      moderationDecision === 'flagged'
+        ? 'Edit submitted and sent for moderation review.'
+        : 'Edit request submitted successfully.',
+    data: { post }
+  });
+});
+
 // @desc    Delete blog post
 // @route   DELETE /api/blog/:id
 // @access  Private (Admin only)
@@ -220,9 +510,9 @@ const toggleLike = asyncHandler(async (req, res, next) => {
     post.likes.splice(likeIndex, 1);
   } else {
     // Like
-    post.likes.push({ 
+    post.likes.push({
       userEmail: userEmail,
-      userId: req.user._id 
+      userId: req.user._id
     });
 
     // Send notification to blog author (only if it's not the author liking their own post)
@@ -274,9 +564,9 @@ const toggleBookmark = asyncHandler(async (req, res, next) => {
     post.bookmarks.splice(bookmarkIndex, 1);
   } else {
     // Add bookmark
-    post.bookmarks.push({ 
+    post.bookmarks.push({
       userEmail: userEmail,
-      userId: req.user._id 
+      userId: req.user._id
     });
   }
 
@@ -303,9 +593,9 @@ const sharePost = asyncHandler(async (req, res, next) => {
   }
 
   // Add share record
-  post.shares.push({ 
+  post.shares.push({
     userEmail: req.user.email,
-    userId: req.user._id 
+    userId: req.user._id
   });
 
   await post.save();
@@ -460,6 +750,23 @@ const approvePost = asyncHandler(async (req, res, next) => {
     return next(new AppError('Blog post not found', 404));
   }
 
+  // Store whether this was a pending edit before we clear the flag
+  const wasEditPending = post.isEditPending;
+
+  // If there's a pending edit, apply it
+  if (post.isEditPending && post.pendingEdit) {
+    post.title = post.pendingEdit.title;
+    post.content = post.pendingEdit.content;
+    post.excerpt = post.pendingEdit.excerpt;
+    post.category = post.pendingEdit.category;
+    post.tags = post.pendingEdit.tags;
+    post.image = post.pendingEdit.image;
+
+    // Clear the pending edit
+    post.pendingEdit = undefined;
+    post.isEditPending = false;
+  }
+
   post.approvalStatus = 'approved';
   post.status = 'published';
   post.approvedBy = req.user._id;
@@ -470,11 +777,15 @@ const approvePost = asyncHandler(async (req, res, next) => {
 
   // Send notification to blog author
   try {
+    const message = wasEditPending
+      ? `Your edited blog post "${post.title}" has been approved and is now live!`
+      : `Your blog post "${post.title}" has been approved and is now live on the feed!`;
+
     await notificationService.sendNotification(post.authorId, {
       userEmail: post.authorEmail,
       type: 'blog_approved',
       title: '✅ Blog Post Approved!',
-      message: `Your blog post "${post.title}" has been approved and is now live on the feed!`,
+      message: message,
       relatedId: post._id,
       relatedModel: 'Blog'
     });
@@ -486,7 +797,7 @@ const approvePost = asyncHandler(async (req, res, next) => {
 
   res.json({
     success: true,
-    message: 'Blog post approved successfully',
+    message: wasEditPending ? 'Blog post edit approved successfully' : 'Blog post approved successfully',
     data: { post }
   });
 });
@@ -507,8 +818,18 @@ const rejectPost = asyncHandler(async (req, res, next) => {
     return next(new AppError('Blog post not found', 404));
   }
 
-  post.approvalStatus = 'rejected';
-  post.status = 'rejected';
+  // If there was a pending edit, clear it
+  if (post.isEditPending && post.pendingEdit) {
+    post.pendingEdit = undefined;
+    post.isEditPending = false;
+    // Reset to published/approved status if it was already published
+    post.approvalStatus = 'approved';
+    post.status = 'published';
+  } else {
+    post.approvalStatus = 'rejected';
+    post.status = 'rejected';
+  }
+
   post.rejectionReason = reason.trim();
   post.rejectedBy = req.user._id;
   post.rejectedAt = new Date();
@@ -517,11 +838,15 @@ const rejectPost = asyncHandler(async (req, res, next) => {
 
   // Send notification to blog author
   try {
+    const message = post.isEditPending
+      ? `Your edit request for blog post "${post.title}" has been rejected. Reason: ${reason.trim()}`
+      : `Your blog post "${post.title}" has been rejected. Reason: ${reason.trim()}`;
+
     await notificationService.sendNotification(post.authorId, {
       userEmail: post.authorEmail,
       type: 'blog_rejected',
       title: '❌ Blog Post Rejected',
-      message: `Your blog post "${post.title}" has been rejected. Reason: ${reason.trim()}`,
+      message: message,
       relatedId: post._id,
       relatedModel: 'Blog'
     });
@@ -545,7 +870,7 @@ const getMyPosts = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10 } = req.query;
   const skip = (parseInt(page) - 1) * parseInt(limit);
 
-  const posts = await Blog.find({ 
+  const posts = await Blog.find({
     authorId: req.user._id,
     approvalStatus: 'approved',
     status: 'published'
@@ -555,7 +880,7 @@ const getMyPosts = asyncHandler(async (req, res) => {
     .limit(limit)
     .lean();
 
-  const total = await Blog.countDocuments({ 
+  const total = await Blog.countDocuments({
     authorId: req.user._id,
     approvalStatus: 'approved',
     status: 'published'
@@ -581,11 +906,11 @@ const getMyPosts = asyncHandler(async (req, res) => {
 // @route   GET /api/blog/stats
 // @access  Public
 const getBlogStats = asyncHandler(async (req, res) => {
-  const totalPosts = await Blog.countDocuments({ 
-    status: 'published', 
-    approvalStatus: 'approved' 
+  const totalPosts = await Blog.countDocuments({
+    status: 'published',
+    approvalStatus: 'approved'
   });
-  
+
   const totalComments = await Blog.aggregate([
     { $match: { status: 'published', approvalStatus: 'approved' } },
     { $project: { commentCount: { $size: { $ifNull: ['$comments', []] } } } },
@@ -596,6 +921,12 @@ const getBlogStats = asyncHandler(async (req, res) => {
     { $match: { status: 'published', approvalStatus: 'approved' } },
     { $project: { likeCount: { $size: { $ifNull: ['$likes', []] } } } },
     { $group: { _id: null, total: { $sum: '$likeCount' } } }
+  ]);
+
+  // Calculate total views (readers) from all published and approved posts
+  const totalViews = await Blog.aggregate([
+    { $match: { status: 'published', approvalStatus: 'approved' } },
+    { $group: { _id: null, total: { $sum: '$views' } } }
   ]);
 
   const activeToday = await Blog.countDocuments({
@@ -610,7 +941,14 @@ const getBlogStats = asyncHandler(async (req, res) => {
       totalPosts,
       totalComments: totalComments[0]?.total || 0,
       totalLikes: totalLikes[0]?.total || 0,
-      activeToday
+      totalViews: totalViews[0]?.total || 0,
+      activeToday,
+      totalUsers: (
+        (await BeginnerUser.countDocuments()) +
+        (await ExpertUser.countDocuments()) +
+        (await VendorUser.countDocuments()) +
+        (await Admin.countDocuments())
+      )
     }
   });
 });
@@ -621,30 +959,36 @@ const getBlogStats = asyncHandler(async (req, res) => {
 const getTopContributors = asyncHandler(async (req, res) => {
   const contributors = await Blog.aggregate([
     { $match: { status: 'published', approvalStatus: 'approved' } },
-    { $group: { 
-      _id: '$authorId', 
-      name: { $first: '$author' },
-      postCount: { $sum: 1 },
-      totalLikes: { $sum: { $size: { $ifNull: ['$likes', []] } } },
-      totalComments: { $sum: { $size: { $ifNull: ['$comments', []] } } }
-    }},
+    {
+      $group: {
+        _id: '$authorId',
+        name: { $first: '$author' },
+        postCount: { $sum: 1 },
+        totalLikes: { $sum: { $size: { $ifNull: ['$likes', []] } } },
+        totalComments: { $sum: { $size: { $ifNull: ['$comments', []] } } }
+      }
+    },
     { $sort: { postCount: -1, totalLikes: -1 } },
     { $limit: 10 },
-    { $lookup: {
-      from: 'users',
-      localField: '_id',
-      foreignField: '_id',
-      as: 'user'
-    }},
+    {
+      $lookup: {
+        from: 'users',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'user'
+      }
+    },
     { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
-    { $project: {
-      _id: 1,
-      name: 1,
-      postCount: 1,
-      totalLikes: 1,
-      totalComments: 1,
-      avatar: '$user.avatar'
-    }}
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        postCount: 1,
+        totalLikes: 1,
+        totalComments: 1,
+        avatar: '$user.avatar'
+      }
+    }
   ]);
 
   res.json({
@@ -660,18 +1004,22 @@ const getTrendingHashtags = asyncHandler(async (req, res) => {
   const hashtags = await Blog.aggregate([
     { $match: { status: 'published', approvalStatus: 'approved' } },
     { $unwind: '$tags' },
-    { $group: { 
-      _id: '$tags', 
-      count: { $sum: 1 },
-      posts: { $push: '$_id' }
-    }},
+    {
+      $group: {
+        _id: '$tags',
+        count: { $sum: 1 },
+        posts: { $push: '$_id' }
+      }
+    },
     { $sort: { count: -1 } },
     { $limit: 10 },
-    { $project: {
-      tag: '$_id',
-      count: 1,
-      posts: { $size: '$posts' }
-    }}
+    {
+      $project: {
+        tag: '$_id',
+        count: 1,
+        posts: { $size: '$posts' }
+      }
+    }
   ]);
 
   res.json({
@@ -680,12 +1028,120 @@ const getTrendingHashtags = asyncHandler(async (req, res) => {
   });
 });
 
+// ——— Ranking helpers: weighted engagement + time decay + simple user preference boost ———
+
+const HOT_RANKING_WEIGHTS = {
+  view: 0.5,
+  like: 4,
+  comment: 3,
+  bookmark: 5,
+  share: 2,
+  decay: 1.2
+};
+
+function computeHotScore(post) {
+  const views = post.views || 0;
+  const likeCount = Array.isArray(post.likes) ? post.likes.length : 0;
+  const commentCount = Array.isArray(post.comments) ? post.comments.length : 0;
+  const bookmarkCount = Array.isArray(post.bookmarks) ? post.bookmarks.length : 0;
+  const shareCount = Array.isArray(post.shares) ? post.shares.length : 0;
+
+  const engagement =
+    HOT_RANKING_WEIGHTS.view * Math.log(1 + views) +
+    HOT_RANKING_WEIGHTS.like * likeCount +
+    HOT_RANKING_WEIGHTS.comment * commentCount +
+    HOT_RANKING_WEIGHTS.bookmark * bookmarkCount +
+    HOT_RANKING_WEIGHTS.share * shareCount;
+
+  const createdAt = post.createdAt ? new Date(post.createdAt).getTime() : Date.now();
+  const hoursSinceCreated = Math.max(
+    1,
+    (Date.now() - createdAt) / (1000 * 60 * 60)
+  );
+
+  const score =
+    engagement / Math.pow(hoursSinceCreated, HOT_RANKING_WEIGHTS.decay);
+
+  // Guard against NaN/Infinity
+  if (!Number.isFinite(score)) return 0;
+  return score;
+}
+
+async function buildUserProfile(userId) {
+  if (!userId) return null;
+
+  const likedOrSaved = await Blog.find({
+    $or: [{ 'likes.userId': userId }, { 'bookmarks.userId': userId }],
+    status: 'published',
+    approvalStatus: 'approved'
+  })
+    .select('category tags createdAt')
+    .limit(200) // reasonable cap
+    .lean();
+
+  if (!likedOrSaved || likedOrSaved.length === 0) {
+    return null;
+  }
+
+  const categoryCounts = {};
+  const tagCounts = {};
+
+  likedOrSaved.forEach(post => {
+    if (post.category) {
+      const cat = String(post.category).toLowerCase();
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    }
+    (post.tags || []).forEach(tag => {
+      if (!tag) return;
+      const t = String(tag).toLowerCase();
+      tagCounts[t] = (tagCounts[t] || 0) + 1;
+    });
+  });
+
+  return { categoryCounts, tagCounts };
+}
+
+function computeUserRelevance(userProfile, post) {
+  if (!userProfile || !post) return 0;
+
+  const { categoryCounts, tagCounts } = userProfile;
+  let score = 0;
+
+  // Category preference boost
+  if (post.category) {
+    const catKey = String(post.category).toLowerCase();
+    const catCount = categoryCounts[catKey] || 0;
+    if (catCount > 0) {
+      score += 2 * catCount;
+    }
+  }
+
+  // Tag overlap boost
+  (post.tags || []).forEach(tag => {
+    if (!tag) return;
+    const t = String(tag).toLowerCase();
+    const tagCount = tagCounts[t] || 0;
+    if (tagCount > 0) {
+      score += 1 * tagCount;
+    }
+  });
+
+  return score;
+}
+
+function computeFinalScore(hotScore, userRelevance) {
+  const alpha = 1.0; // weight for global "hotness"
+  const beta = 0.3; // weight for user preference
+  return alpha * (hotScore || 0) + beta * (userRelevance || 0);
+}
+
 module.exports = {
   getAllPosts,
   getPost,
   getPostBySlug,
   createPost,
   updatePost,
+  submitEditRequest,
   deletePost,
   toggleLike,
   toggleBookmark,
@@ -699,5 +1155,6 @@ module.exports = {
   getMyPosts,
   getBlogStats,
   getTopContributors,
-  getTrendingHashtags
+  getTrendingHashtags,
+  uploadBlogImage
 };

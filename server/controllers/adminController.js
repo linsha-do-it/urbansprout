@@ -1,7 +1,11 @@
 const User = require('../models/User');
+const BeginnerUser = require('../models/BeginnerUser');
+const ExpertUser = require('../models/ExpertUser');
+const VendorUser = require('../models/VendorUser');
 const Plant = require('../models/Plant');
 const Blog = require('../models/Blog');
 const Order = require('../models/Order');
+const VendorOrder = require('../models/VendorOrder');
 const Product = require('../models/Product');
 const Discount = require('../models/Discount');
 const Notification = require('../models/Notification');
@@ -12,7 +16,39 @@ const AdminActivityService = require('../utils/adminActivityService');
 const { sendBlogApprovalEmail, sendBlogRejectionEmail, sendEmailNotification, sendAdminVerificationEmail, sendOrderStatusUpdateEmail } = require('../utils/emailService');
 const { AppError } = require('../middlewares/errorHandler');
 const { asyncHandler } = require('../middlewares/errorHandler');
+const { applyContentViolation } = require('../services/violationService');
 const crypto = require('crypto');
+
+// Helper: get model for role (beginner|expert|vendor) - for admin user list only
+const getRoleUserModel = (role) => {
+  switch (role) {
+    case 'beginner': return BeginnerUser;
+    case 'expert': return ExpertUser;
+    case 'vendor': return VendorUser;
+    default: return null;
+  }
+};
+
+// Helper: find user by id in beginnerusers, expertusers, or vendorusers (not admins)
+const findRoleUserById = async (userId) => {
+  let user = await BeginnerUser.findById(userId);
+  if (user) return { user, model: BeginnerUser };
+  user = await ExpertUser.findById(userId);
+  if (user) return { user, model: ExpertUser };
+  user = await VendorUser.findById(userId);
+  if (user) return { user, model: VendorUser };
+  return { user: null, model: null };
+};
+
+// Helper: count all users across the three role collections
+const countAllRoleUsers = async (match = {}) => {
+  const [b, e, v] = await Promise.all([
+    BeginnerUser.countDocuments(match),
+    ExpertUser.countDocuments(match),
+    VendorUser.countDocuments(match)
+  ]);
+  return b + e + v;
+};
 
 // @desc    Get admin dashboard stats
 // @route   GET /api/admin/dashboard
@@ -23,7 +59,7 @@ const getDashboardStats = asyncHandler(async (req, res) => {
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const lastMonth = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
 
-  // Get basic counts
+  // Get basic counts (users = beginner + expert + vendor only)
   const [
     totalUsers,
     totalProducts,
@@ -38,7 +74,7 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     pendingBlogPosts,
     totalBlogPosts
   ] = await Promise.all([
-    User.countDocuments(),
+    countAllRoleUsers(),
     Product.countDocuments({ archived: false }),
     Order.countDocuments(),
     // Use delivered-only for revenue to match dashboard label and insights
@@ -46,7 +82,7 @@ const getDashboardStats = asyncHandler(async (req, res) => {
       { $match: { status: { $in: ['delivered'] } } },
       { $group: { _id: null, total: { $sum: '$total' } } }
     ]),
-    User.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+    countAllRoleUsers({ createdAt: { $gte: thirtyDaysAgo } }),
     Order.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
     Order.aggregate([
       { 
@@ -57,9 +93,7 @@ const getDashboardStats = asyncHandler(async (req, res) => {
       },
       { $group: { _id: null, total: { $sum: '$total' } } }
     ]),
-    User.countDocuments({ 
-      createdAt: { $gte: lastMonth, $lt: thirtyDaysAgo }
-    }),
+    countAllRoleUsers({ createdAt: { $gte: lastMonth, $lt: thirtyDaysAgo } }),
     Order.countDocuments({ 
       createdAt: { $gte: lastMonth, $lt: thirtyDaysAgo }
     }),
@@ -208,41 +242,91 @@ const getDashboardStats = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get all users
+// @desc    Get all users (from beginnerusers, expertusers, vendorusers)
 // @route   GET /api/admin/users
 // @access  Private (Admin only)
 const getAllUsers = asyncHandler(async (req, res) => {
   const { search, role, status, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
   const { page, limit, skip } = req.pagination;
 
-  let query = {};
+  const sortObj = {};
+  sortObj[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
+  const selectFields = '-password -resetPasswordToken -resetPasswordExpire -emailVerificationToken -emailVerificationExpire';
+
+  // Admins are in a separate collection; no role users to list when filtering by admin
+  if (role === 'admin') {
+    return res.json({
+      success: true,
+      data: {
+        users: [],
+        pagination: { page, limit, total: 0, pages: 0, hasNext: false, hasPrev: false }
+      }
+    });
+  }
+
+  // When role filter is specified (beginner|expert|vendor), query only that collection
+  if (role && getRoleUserModel(role)) {
+    const UserModel = getRoleUserModel(role);
+    let query = {};
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+    if (status) query.status = status;
+
+    const [users, total] = await Promise.all([
+      UserModel.find(query).sort(sortObj).skip(skip).limit(limit).select(selectFields).lean(),
+      UserModel.countDocuments(query)
+    ]);
+    return res.json({
+      success: true,
+      data: {
+        users,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit),
+          hasNext: page * limit < total,
+          hasPrev: page > 1
+        }
+      }
+    });
+  }
+
+  // No role filter: aggregate from all three collections
+  const baseMatch = {};
   if (search) {
-    query.$or = [
+    baseMatch.$or = [
       { name: { $regex: search, $options: 'i' } },
       { email: { $regex: search, $options: 'i' } }
     ];
   }
+  if (status) baseMatch.status = status;
 
-  if (role) {
-    query.role = role;
-  }
+  const pipeline = [
+    { $match: baseMatch },
+    { $unionWith: { coll: 'expertusers', pipeline: [{ $match: baseMatch }] } },
+    { $unionWith: { coll: 'vendorusers', pipeline: [{ $match: baseMatch }] } },
+    { $sort: sortObj },
+    {
+      $facet: {
+        total: [{ $count: 'count' }],
+        data: [
+          { $skip: skip },
+          { $limit: limit },
+          { $project: { password: 0, resetPasswordToken: 0, resetPasswordExpire: 0, emailVerificationToken: 0, emailVerificationExpire: 0 } }
+        ]
+      }
+    }
+  ];
 
-  if (status) {
-    query.status = status;
-  }
-
-  const sortObj = {};
-  sortObj[sortBy] = sortOrder === 'desc' ? -1 : 1;
-
-  const users = await User.find(query)
-    .sort(sortObj)
-    .skip(skip)
-    .limit(limit)
-    .select('-password -resetPasswordToken -resetPasswordExpire -emailVerificationToken -emailVerificationExpire')
-    .lean();
-
-  const total = await User.countDocuments(query);
+  const result = await BeginnerUser.aggregate(pipeline);
+  const total = result[0]?.total[0]?.count ?? 0;
+  const users = result[0]?.data ?? [];
 
   res.json({
     success: true,
@@ -260,7 +344,7 @@ const getAllUsers = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Update user role
+// @desc    Update user role (role in beginner/expert/vendor is immutable; admin upgrade not supported here)
 // @route   PUT /api/admin/users/:id/role
 // @access  Private (Admin only)
 const updateUserRole = asyncHandler(async (req, res, next) => {
@@ -270,53 +354,37 @@ const updateUserRole = asyncHandler(async (req, res, next) => {
     return next(new AppError('Invalid role. Must be user or admin', 400));
   }
 
-  const user = await User.findById(req.params.id);
-
+  const { user, model } = await findRoleUserById(req.params.id);
   if (!user) {
     return next(new AppError('User not found', 404));
   }
 
-  user.role = role;
-  await user.save();
-
-  // Send verification email if role is upgraded to admin
   if (role === 'admin') {
-    try {
-      await sendAdminVerificationEmail(user.email, user.name, 'user', 'Your account has been upgraded to admin status');
-      console.log(`Admin verification email sent to ${user.email}`);
-    } catch (emailError) {
-      console.error('Failed to send admin verification email:', emailError);
-    }
+    return next(new AppError('Use the admin invite flow to grant admin access', 400));
   }
 
+  // role === 'user': no-op (beginner/expert/vendor roles are fixed per collection)
   res.json({
     success: true,
-    message: `User role updated to ${role}`,
+    message: 'User role unchanged (role type is fixed per account)',
     data: { user }
   });
 });
 
-// @desc    Delete user
+// @desc    Delete user (from beginnerusers, expertusers, or vendorusers)
 // @route   DELETE /api/admin/users/:id
 // @access  Private (Admin only)
 const deleteUser = asyncHandler(async (req, res, next) => {
-  const user = await User.findById(req.params.id);
-
+  const { user, model } = await findRoleUserById(req.params.id);
   if (!user) {
     return next(new AppError('User not found', 404));
   }
 
-  // Prevent admin from deleting themselves
   if (user._id.toString() === req.user._id.toString()) {
     return next(new AppError('You cannot delete your own account', 400));
   }
 
-  // Prevent deletion of admin users
-  if (user.role === 'admin') {
-    return next(new AppError('Cannot delete admin users', 400));
-  }
-
-  await User.findByIdAndDelete(req.params.id);
+  await model.findByIdAndDelete(req.params.id);
 
   res.json({
     success: true,
@@ -570,6 +638,21 @@ const updateOrderStatus = asyncHandler(async (req, res, next) => {
 
   await order.save();
 
+  // Sync status to vendororders so vendors see updated status
+  await VendorOrder.updateMany(
+    { order: order._id },
+    {
+      $set: { status: order.status },
+      $push: {
+        statusHistory: {
+          status: order.status,
+          note: note || `Status updated to ${status}`,
+          updatedAt: new Date()
+        }
+      }
+    }
+  );
+
   res.json({
     success: true,
     message: 'Order status updated successfully',
@@ -641,6 +724,23 @@ const approveBlogPost = asyncHandler(async (req, res, next) => {
     return next(new AppError('Blog post not found', 404));
   }
 
+  // Store whether this was a pending edit before we clear the flag
+  const wasEditPending = post.isEditPending;
+
+  // If there's a pending edit, apply it
+  if (post.isEditPending && post.pendingEdit) {
+    post.title = post.pendingEdit.title;
+    post.content = post.pendingEdit.content;
+    post.excerpt = post.pendingEdit.excerpt;
+    post.category = post.pendingEdit.category;
+    post.tags = post.pendingEdit.tags;
+    post.image = post.pendingEdit.image;
+    
+    // Clear the pending edit
+    post.pendingEdit = undefined;
+    post.isEditPending = false;
+  }
+
   post.approvalStatus = 'approved';
   post.status = 'published';
   post.approvedBy = req.user._id;
@@ -651,11 +751,15 @@ const approveBlogPost = asyncHandler(async (req, res, next) => {
 
   // Send notification to the author
   try {
+    const message = wasEditPending 
+      ? `Your edited blog post "${post.title}" has been approved and is now live!`
+      : `Your blog post "${post.title}" has been approved and is now live on the feed!`;
+      
     await notificationService.sendNotification(post.authorId, {
       userEmail: post.authorEmail,
       type: 'blog_approved',
       title: '✅ Blog Post Approved!',
-      message: `Your blog post "${post.title}" has been approved and is now live on the feed!`,
+      message: message,
       relatedId: post._id,
       relatedModel: 'Blog'
     });
@@ -697,11 +801,21 @@ const rejectBlogPost = asyncHandler(async (req, res, next) => {
     return next(new AppError('Blog post not found', 404));
   }
 
-  post.approvalStatus = 'rejected';
-  post.status = 'rejected';
-  post.rejectionReason = reason.trim();
-  post.rejectedBy = req.user._id;
-  post.rejectedAt = new Date();
+  // If there was a pending edit, clear it but keep the post at its current status
+  if (post.isEditPending && post.pendingEdit) {
+    post.pendingEdit = undefined;
+    post.isEditPending = false;
+    // Don't change approval status if rejecting an edit on an already approved post
+    post.rejectionReason = reason.trim();
+    post.rejectedBy = req.user._id;
+    post.rejectedAt = new Date();
+  } else {
+    post.approvalStatus = 'rejected';
+    post.status = 'rejected';
+    post.rejectionReason = reason.trim();
+    post.rejectedBy = req.user._id;
+    post.rejectedAt = new Date();
+  }
 
   await post.save();
 
@@ -758,6 +872,46 @@ const rejectBlogPost = asyncHandler(async (req, res, next) => {
     success: true,
     message: 'Blog post rejected successfully',
     data: { post }
+  });
+});
+
+// @desc    Warn user for a specific blog post (increments violation count)
+// @route   PUT /api/admin/blog/:id/warn
+// @access  Private (Admin only)
+const warnUserForBlog = asyncHandler(async (req, res, next) => {
+  const post = await Blog.findById(req.params.id);
+
+  if (!post) {
+    return next(new AppError('Blog post not found', 404));
+  }
+
+  if (!post.authorId) {
+    return next(new AppError('Author information missing for this post', 400));
+  }
+
+  const result = await applyContentViolation(post.authorId, 'Admin blog content warning');
+
+  try {
+    await notificationService.sendNotification(post.authorId, {
+      userEmail: post.authorEmail,
+      type: 'blog_warning',
+      title: 'Blog Content Warning',
+      message:
+        'An admin has reviewed one of your blog posts and issued a warning for content that may violate our community guidelines. Please review and adjust future posts.',
+      relatedId: post._id,
+      relatedModel: 'Blog'
+    });
+  } catch (err) {
+    console.error('Failed to send blog warning notification:', err);
+  }
+
+  res.json({
+    success: true,
+    message: 'User warned and violation recorded',
+    data: {
+      userId: post.authorId,
+      violationCount: result?.user?.violationCount
+    }
   });
 });
 
@@ -923,15 +1077,9 @@ const toggleCommentApproval = asyncHandler(async (req, res, next) => {
 // @access  Private (Admin only)
 const blockUser = asyncHandler(async (req, res, next) => {
   const { reason } = req.body;
-  const userId = req.params.id;
-
-  const user = await User.findById(userId);
+  const { user, model } = await findRoleUserById(req.params.id);
   if (!user) {
     return next(new AppError('User not found', 404));
-  }
-
-  if (user.role === 'admin') {
-    return next(new AppError('Cannot block admin users', 400));
   }
 
   user.status = user.status === 'blocked' ? 'active' : 'blocked';
@@ -955,15 +1103,9 @@ const blockUser = asyncHandler(async (req, res, next) => {
 // @access  Private (Admin only)
 const suspendUser = asyncHandler(async (req, res, next) => {
   const { reason, duration } = req.body; // duration in hours
-  const userId = req.params.id;
-
-  const user = await User.findById(userId);
+  const { user } = await findRoleUserById(req.params.id);
   if (!user) {
     return next(new AppError('User not found', 404));
-  }
-
-  if (user.role === 'admin') {
-    return next(new AppError('Cannot suspend admin users', 400));
   }
 
   const suspensionEnd = new Date();
@@ -990,16 +1132,13 @@ const suspendUser = asyncHandler(async (req, res, next) => {
 // @route   POST /api/admin/users/:id/reset-password
 // @access  Private (Admin only)
 const resetUserPassword = asyncHandler(async (req, res, next) => {
-  const userId = req.params.id;
-
-  const user = await User.findById(userId);
+  const { user } = await findRoleUserById(req.params.id);
   if (!user) {
     return next(new AppError('User not found', 404));
   }
 
-  // Generate reset token
   const resetToken = crypto.randomBytes(20).toString('hex');
-  user.resetPasswordToken = crypto.createHash('sha256').hash(resetToken).digest('hex');
+  user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
   user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
 
   await user.save();
@@ -1019,20 +1158,39 @@ const resetUserPassword = asyncHandler(async (req, res, next) => {
 // @access  Private (Admin only)
 const sendUserEmail = asyncHandler(async (req, res, next) => {
   const { subject, message } = req.body;
-  const userId = req.params.id;
-
-  const user = await User.findById(userId);
+  const { user } = await findRoleUserById(req.params.id);
   if (!user) {
     return next(new AppError('User not found', 404));
   }
 
-  // TODO: Send email
-  // await sendEmailNotification(user.email, subject, message);
+  // Import email service
+  const { sendEmailNotification } = require('../utils/emailService');
 
-  res.json({
-    success: true,
-    message: 'Email sent successfully'
-  });
+  // Send email to user
+  try {
+    const emailResult = await sendEmailNotification(user.email, subject, message, user.name);
+    
+    if (emailResult.success) {
+      console.log(`✅ Email sent successfully to ${user.email}`);
+      res.json({
+        success: true,
+        message: 'Email sent successfully',
+        emailId: emailResult.messageId
+      });
+    } else {
+      console.error(`❌ Failed to send email to ${user.email}:`, emailResult.error);
+      res.json({
+        success: false,
+        message: 'Failed to send email: ' + emailResult.error
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error sending email:', error);
+    res.json({
+      success: false,
+      message: 'Failed to send email: ' + error.message
+    });
+  }
 });
 
 // @desc    Update admin notes
@@ -1040,9 +1198,7 @@ const sendUserEmail = asyncHandler(async (req, res, next) => {
 // @access  Private (Admin only)
 const updateUserNotes = asyncHandler(async (req, res, next) => {
   const { notes } = req.body;
-  const userId = req.params.id;
-
-  const user = await User.findById(userId);
+  const { user } = await findRoleUserById(req.params.id);
   if (!user) {
     return next(new AppError('User not found', 404));
   }
@@ -1062,9 +1218,7 @@ const updateUserNotes = asyncHandler(async (req, res, next) => {
 // @access  Private (Admin only)
 const flagUser = asyncHandler(async (req, res, next) => {
   const { reason } = req.body;
-  const userId = req.params.id;
-
-  const user = await User.findById(userId);
+  const { user } = await findRoleUserById(req.params.id);
   if (!user) {
     return next(new AppError('User not found', 404));
   }
@@ -1081,7 +1235,7 @@ const flagUser = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Bulk operations on users
+// @desc    Bulk operations on users (beginnerusers, expertusers, vendorusers)
 // @route   POST /api/admin/users/bulk
 // @access  Private (Admin only)
 const bulkUserOperations = asyncHandler(async (req, res, next) => {
@@ -1091,15 +1245,21 @@ const bulkUserOperations = asyncHandler(async (req, res, next) => {
     return next(new AppError('User IDs are required', 400));
   }
 
-  const users = await User.find({ _id: { $in: userIds } });
+  // Find all users across the three collections
+  const [beginners, experts, vendors] = await Promise.all([
+    BeginnerUser.find({ _id: { $in: userIds } }),
+    ExpertUser.find({ _id: { $in: userIds } }),
+    VendorUser.find({ _id: { $in: userIds } })
+  ]);
+  const usersWithModels = [
+    ...beginners.map(user => ({ user, model: BeginnerUser })),
+    ...experts.map(user => ({ user, model: ExpertUser })),
+    ...vendors.map(user => ({ user, model: VendorUser }))
+  ];
+
   const results = [];
 
-  for (const user of users) {
-    if (user.role === 'admin') {
-      results.push({ userId: user._id, success: false, message: 'Cannot modify admin users' });
-      continue;
-    }
-
+  for (const { user, model } of usersWithModels) {
     try {
       switch (operation) {
         case 'block':
@@ -1111,15 +1271,11 @@ const bulkUserOperations = asyncHandler(async (req, res, next) => {
           user.blockReason = null;
           break;
         case 'delete':
-          if (user.role === 'admin') {
-            results.push({ userId: user._id, success: false, message: 'Cannot delete admin users' });
-            continue;
-          }
-          await User.findByIdAndDelete(user._id);
+          await model.findByIdAndDelete(user._id);
           results.push({ userId: user._id, success: true, message: 'User deleted' });
           continue;
         case 'changeRole':
-          user.role = data.role;
+          // Role is immutable per collection; skip or ignore
           break;
         case 'suspend':
           const suspensionEnd = new Date();
@@ -1147,24 +1303,23 @@ const bulkUserOperations = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Get user details for quick view
+// @desc    Get user details for quick view (from beginnerusers, expertusers, or vendorusers)
 // @route   GET /api/admin/users/:id/details
 // @access  Private (Admin only)
 const getUserDetails = asyncHandler(async (req, res, next) => {
   const userId = req.params.id;
-
-  const user = await User.findById(userId)
+  const { user: userDoc, model } = await findRoleUserById(userId);
+  if (!userDoc) {
+    return next(new AppError('User not found', 404));
+  }
+  const user = await model.findById(userId)
     .select('-password -resetPasswordToken -resetPasswordExpire -emailVerificationToken -emailVerificationExpire')
     .lean();
 
-  if (!user) {
-    return next(new AppError('User not found', 404));
-  }
-
-  // Get additional user activity data
+  // Get additional user activity data (Order uses 'user' ref, Blog uses authorId)
   const [blogPosts, orders] = await Promise.all([
     Blog.countDocuments({ authorId: userId }),
-    Order.countDocuments({ userId: userId })
+    Order.countDocuments({ user: userId })
   ]);
 
   res.json({
@@ -3594,6 +3749,41 @@ const getPlantSuggestionStats = asyncHandler(async (req, res, next) => {
   });
 });
 
+// ==================== REVENUE PREDICTION ====================
+
+const { predictRevenue, getCurrentRevenueMetrics } = require('../services/revenuePredictionService');
+
+// @desc    Get revenue prediction
+// @route   GET /api/admin/revenue-prediction
+// @access  Private (Admin only)
+const getRevenuePrediction = asyncHandler(async (req, res) => {
+  const { days = 30 } = req.query;
+  
+  try {
+    const predictionData = await predictRevenue(parseInt(days));
+    const currentMetrics = await getCurrentRevenueMetrics();
+    
+    res.json({
+      success: true,
+      data: {
+        predictions: predictionData.predictions,
+        confidence: predictionData.confidence,
+        avgDailyRevenue: predictionData.avgDailyRevenue,
+        modelAccuracy: predictionData.modelAccuracy,
+        trainingData: predictionData.trainingData,
+        futureDates: predictionData.futureDates,
+        currentMetrics
+      }
+    });
+  } catch (error) {
+    console.error('Error getting revenue prediction:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error generating revenue prediction'
+    });
+  }
+});
+
 module.exports = {
   getDashboardStats,
   getAllUsers,
@@ -3649,6 +3839,8 @@ module.exports = {
   applyDiscountToCategory,
   getUpcomingDiscounts,
   getAvailableDiscountsForProduct,
+  // Blog moderation helpers
+  warnUserForBlog,
   // Plant Suggestions Management
   getAllPlantSuggestions,
   getPlantSuggestion,
@@ -3657,4 +3849,5 @@ module.exports = {
   deletePlantSuggestion,
   togglePlantSuggestionStatus,
   getPlantSuggestionStats,
+  getRevenuePrediction,
 };

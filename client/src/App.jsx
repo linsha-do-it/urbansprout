@@ -8,9 +8,11 @@ import Home from './pages/Home'
 import UrbanSproutLanding from './UrbanSproutLanding'
 import Login from './pages/auth/NewLogin'
 import Signup from './pages/auth/Signup'
+import RoleSelection from './pages/auth/RoleSelection'
 import AdminRegister from './pages/auth/AdminRegister'
 import ResetPassword from './pages/auth/ResetPassword'
 import PlantSuggestion from './pages/PlantSuggestion'
+import SpacePlanner from './pages/SpacePlanner'
 import Unauthorized from './pages/Unauthorized'
 import Admin from './pages/Admin'
 import Blog from './pages/Blog'
@@ -27,6 +29,7 @@ import AdminBlogPosts from './pages/admin/AdminBlogPosts'
 import AdminOrders from './pages/admin/AdminOrders'
 import AdminSettings from './pages/admin/AdminSettings'
 import InventoryInsights from './pages/admin/InventoryInsights'
+import RevenuePredictor from './pages/admin/RevenuePredictor'
 
 // Import dashboard components
 import AdminDashboard from './pages/dashboard/AdminDashboard'
@@ -34,12 +37,21 @@ import BeginnerDashboard from './pages/dashboard/BeginnerDashboard'
 import ExpertDashboard from './pages/dashboard/ExpertDashboard'
 import VendorDashboard from './pages/dashboard/VendorDashboard'
 
+// Import vendor pages
+import VendorStorefront from './pages/vendor/VendorStorefront'
+import VendorProducts from './pages/vendor/VendorProducts'
+import VendorPayoutSettings from './pages/vendor/VendorPayoutSettings'
+import VendorOrders from './pages/vendor/VendorOrders'
+import VendorAnalytics from './pages/vendor/VendorAnalytics'
+
 // Import My Garden Journal components
 import MyGardenJournal from './pages/MyGardenJournal'
 import MyOrders from './pages/MyOrders'
 import MyActivity from './pages/MyActivity'
 import PlantDetail from './pages/PlantDetail'
 import NotificationDebug from './pages/NotificationDebug'
+import Learn from './pages/Learn'
+import MyCourses from './pages/MyCourses'
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requiredRole = null, allowedRoles = [], redirectToSignup = false }) => {
@@ -115,7 +127,8 @@ const App = () => {
           {/* Public Routes */}
           <Route path="/" element={<UrbanSproutLanding />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+          <Route path="/signup" element={<RoleSelection />} />
+          <Route path="/signup/form" element={<Signup />} />
           <Route path="/admin-register" element={
             <>
               <Navbar />
@@ -172,6 +185,14 @@ const App = () => {
               </div>
             </>
           } />
+          <Route path="/space-planner" element={
+            <>
+              <Navbar />
+              <div className="pt-[82px]">
+                <SpacePlanner />
+              </div>
+            </>
+          } />
           <Route path="/unauthorized" element={
             <>
               <Navbar />
@@ -206,6 +227,14 @@ const App = () => {
               </div>
             </ProtectedRoute>
           } />
+          <Route path="/expert/dashboard" element={
+            <ProtectedRoute allowedRoles={['expert']}>
+              <Navbar />
+              <div className="pt-[82px]">
+                <ExpertDashboard />
+              </div>
+            </ProtectedRoute>
+          } />
           <Route path="/my-garden-journal" element={
             <ProtectedRoute>
               <Navbar />
@@ -227,6 +256,22 @@ const App = () => {
               <Navbar />
               <div className="pt-[82px]">
                 <MyActivity />
+              </div>
+            </ProtectedRoute>
+          } />
+          <Route path="/learn" element={
+            <ProtectedRoute>
+              <Navbar />
+              <div className="pt-[82px]">
+                <Learn />
+              </div>
+            </ProtectedRoute>
+          } />
+          <Route path="/my-courses" element={
+            <ProtectedRoute>
+              <Navbar />
+              <div className="pt-[82px]">
+                <MyCourses />
               </div>
             </ProtectedRoute>
           } />
@@ -283,12 +328,69 @@ const App = () => {
               </AdminLayout>
             </ProtectedRoute>
           } />
+          <Route path="/admin/revenue-predictor" element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminLayout>
+                <RevenuePredictor />
+              </AdminLayout>
+            </ProtectedRoute>
+          } />
           <Route path="/admin/settings" element={
             <ProtectedRoute requiredRole="admin">
               <AdminLayout>
                 <AdminSettings />
               </AdminLayout>
             </ProtectedRoute>
+          } />
+
+          {/* Vendor Routes */}
+          <Route path="/vendor/dashboard" element={
+            <ProtectedRoute requiredRole="vendor">
+              <Navbar />
+              <div className="pt-[82px]">
+                <VendorDashboard />
+              </div>
+            </ProtectedRoute>
+          } />
+          <Route path="/vendor/products" element={
+            <ProtectedRoute requiredRole="vendor">
+              <Navbar />
+              <div className="pt-[82px]">
+                <VendorProducts />
+              </div>
+            </ProtectedRoute>
+          } />
+          <Route path="/vendor/payout-settings" element={
+            <ProtectedRoute requiredRole="vendor">
+              <Navbar />
+              <div className="pt-[82px]">
+                <VendorPayoutSettings />
+              </div>
+            </ProtectedRoute>
+          } />
+          <Route path="/vendor/orders" element={
+            <ProtectedRoute requiredRole="vendor">
+              <Navbar />
+              <div className="pt-[82px]">
+                <VendorOrders />
+              </div>
+            </ProtectedRoute>
+          } />
+          <Route path="/vendor/analytics" element={
+            <ProtectedRoute requiredRole="vendor">
+              <Navbar />
+              <div className="pt-[82px]">
+                <VendorAnalytics />
+              </div>
+            </ProtectedRoute>
+          } />
+          <Route path="/vendors/:vendorId" element={
+            <>
+              <Navbar />
+              <div className="pt-[82px]">
+                <VendorStorefront />
+              </div>
+            </>
           } />
 
           {/* Catch all route */}

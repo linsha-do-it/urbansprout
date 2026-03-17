@@ -47,11 +47,11 @@ const FloatingChatbot = () => {
               <div className="absolute inset-0 rounded-full bg-green-400 opacity-75 animate-ping"></div>
               
               {/* Main button content */}
-              <div className="relative z-10">
+              <div className="relative z-10 text-2xl">
                 {isMinimized ? (
                   <FaComment className="w-6 h-6" />
                 ) : (
-                  <FaRobot className="w-6 h-6" />
+                  <span className="text-yellow-300">🍍</span>
                 )}
               </div>
               
@@ -85,8 +85,8 @@ const FloatingChatbot = () => {
               {/* Custom Header */}
               <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-4 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                    <Logo size="sm" className="text-white" />
+                  <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center text-2xl">
+                    🍍
                   </div>
                   <div>
                     <h3 className="font-semibold">Sprouty</h3>

@@ -367,13 +367,15 @@ const Profile = () => {
         {/* Account Stats */}
         <div className="mt-8 bg-white rounded-xl shadow-sm p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">
-                {JSON.parse(localStorage.getItem(`my_garden_${user?.id || user?.uid || user?.email || 'guest'}`) || '[]').length}
+          <div className={`grid grid-cols-1 gap-4 ${user?.role === 'admin' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
+            {user?.role !== 'admin' && (
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">
+                  {JSON.parse(localStorage.getItem(`my_garden_${user?.id || user?.uid || user?.email || 'guest'}`) || '[]').length}
+                </div>
+                <div className="text-sm text-gray-600">Plants in Garden</div>
               </div>
-              <div className="text-sm text-gray-600">Plants in Garden</div>
-            </div>
+            )}
             <div className="text-center p-4 bg-gray-50 rounded-lg">
               <div className="text-2xl font-bold text-blue-600">
                 {user?.role === 'beginner' ? 'Beginner' : 

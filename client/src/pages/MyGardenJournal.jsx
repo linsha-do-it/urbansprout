@@ -32,7 +32,7 @@ const MyGardenJournal = () => {
       
       setIsLoading(true);
       try {
-        const response = await fetch('/api/garden', {
+        const response = await fetch('http://localhost:5001/api/garden', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('urbansprout_token')}`
           }
@@ -200,7 +200,7 @@ const MyGardenJournal = () => {
           return;
         }
         
-        const response = await fetch(`/api/garden/${plant._id}/status`, {
+        const response = await fetch(`http://localhost:5001/api/garden/${plant._id}/status`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -347,7 +347,7 @@ const MyGardenJournal = () => {
       }
 
       // Database object: call API
-      const response = await fetch(`/api/garden/${plant._id}`, {
+      const response = await fetch(`http://localhost:5001/api/garden/${plant._id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('urbansprout_token')}`

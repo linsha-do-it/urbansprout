@@ -73,8 +73,9 @@ const AdminUsers = () => {
       const response = await apiCall(`/admin/users?${params}`);
       if (response.success) {
         setUsers(response.data.users);
-        setTotalPages(response.data.pagination.pages);
-        setTotalItems(response.data.pagination.total);
+        const pagination = response.data.pagination || {};
+        setTotalPages(pagination.pages ?? 1);
+        setTotalItems(pagination.total ?? response.data.users.length);
       }
     } catch (error) {
       console.error('Error loading users:', error);
@@ -250,7 +251,7 @@ const AdminUsers = () => {
     );
   };
 
-  const roles = ['admin', 'vendor', 'expert', 'beginner'];
+  const roles = ['beginner', 'expert', 'vendor'];
   const statuses = ['active', 'inactive', 'blocked', 'suspended'];
 
   return (

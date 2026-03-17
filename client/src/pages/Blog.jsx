@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react' 
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { apiCall } from '../utils/api'
-import { 
-  FaSearch, FaHeart, FaComment, FaShare, FaBookmark, FaPlus, 
+import {
+  FaSearch, FaHeart, FaComment, FaShare, FaBookmark, FaPlus,
   FaFire, FaTrophy, FaQuestionCircle, FaStar, FaUsers, FaFileAlt,
   FaFilter, FaSortDown, FaTimes, FaCamera, FaHashtag, FaPaperPlane
 } from 'react-icons/fa'
@@ -10,19 +10,19 @@ import Avatar from '../components/Avatar'
 import CommunityGuidelines from '../components/CommunityGuidelines'
 
 // PostCard component moved outside to prevent re-creation on every render
-const PostCard = ({ 
-  post, 
-  user, 
-  showComments, 
-  newComment, 
-  setNewComment, 
-  toggleComments, 
-  handleAddCommentToPost, 
-  handleLikePost, 
-  handleSharePost, 
-  handleBookmarkPost, 
-  handleDeletePost, 
-  setEditingPost 
+const PostCard = ({
+  post,
+  user,
+  showComments,
+  newComment,
+  setNewComment,
+  toggleComments,
+  handleAddCommentToPost,
+  handleLikePost,
+  handleSharePost,
+  handleBookmarkPost,
+  handleDeletePost,
+  setEditingPost
 }) => {
   const [isExpanded, setIsExpanded] = React.useState(false)
   const [showReadMore, setShowReadMore] = React.useState(false)
@@ -41,228 +41,237 @@ const PostCard = ({
   }
 
   return (
-  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 hover:shadow-md transition-shadow group">
-    {/* Post Header */}
-    <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center space-x-3">
-        <Avatar user={post.user} size="md" />
-        <div>
-          <div className="flex items-center space-x-2">
-            <span className="font-semibold text-gray-900">{post.user.name}</span>
-            <span className="text-gray-500 text-sm">{post.user.username}</span>
-            <span className="text-gray-400">•</span>
-            <span className="text-gray-500 text-sm">{post.timeAgo}</span>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 hover:shadow-md transition-shadow group">
+      {/* Post Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-3">
+          <Avatar user={post.user} size="md" />
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="font-semibold text-gray-900">{post.user.name}</span>
+              {post.user.role && (
+                <span
+                  className={`ml-1 px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${
+                    post.user.role === 'expert'
+                      ? 'bg-purple-100 text-purple-700'
+                      : post.user.role === 'vendor'
+                      ? 'bg-green-100 text-green-700'
+                      : post.user.role === 'admin'
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}
+                >
+                  {post.user.role}
+                </span>
+              )}
+              <span className="text-gray-400">•</span>
+              <span className="text-gray-500 text-sm">{post.timeAgo}</span>
+            </div>
           </div>
         </div>
-      </div>
-      <div className="flex items-center space-x-2">
-        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-          post.tag === 'Question' ? 'bg-blue-100 text-blue-700' : 
-          post.tag === 'Success Story' ? 'bg-forest-green-100 text-forest-green-700' :
-          'bg-orange-100 text-orange-700'
-        }`}>
-          {post.tag}
-        </span>
-        {/* Edit/Delete Controls - Only show for post owner */}
-        {user && post.user.name === (user.name || user.displayName) && (
-          <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              type="button"
-              onClick={() => setEditingPost({ ...post, isEditing: true })}
-              className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-              title="Edit post"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDeletePost(post.id)}
-              className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-              title="Delete post"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-
-    {/* Post Content */}
-    <h3 className="text-lg font-bold text-gray-900 mb-2">{post.title}</h3>
-    <div className="mb-3">
-      <p 
-        ref={contentRef}
-        className={`text-sm text-gray-700 leading-relaxed ${
-          !isExpanded && showReadMore ? 'overflow-hidden' : ''
-        }`}
-        style={{
-          display: !isExpanded && showReadMore ? '-webkit-box' : 'block',
-          WebkitLineClamp: !isExpanded && showReadMore ? 3 : 'unset',
-          WebkitBoxOrient: 'vertical'
-        }}
-      >
-        {post.content}
-      </p>
-      {showReadMore && (
-        <button
-          onClick={toggleExpanded}
-          className="text-forest-green-600 hover:text-forest-green-800 text-sm font-medium mt-1 transition-colors"
-        >
-          {isExpanded ? 'Read less' : 'Read more'}
-        </button>
-      )}
-    </div>
-
-    {/* Post Image */}
-    {post.image && (
-      <div className="mb-3">
-        <img 
-          src={post.image} 
-          alt="Post content" 
-          className="w-full h-48 object-cover rounded-lg"
-        />
-      </div>
-    )}
-
-    {/* Hashtags */}
-    <div className="flex flex-wrap gap-1 mb-3">
-      {post.hashtags.map((tag, index) => (
-        <span 
-          key={index}
-          className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs hover:bg-forest-green-100 hover:text-forest-green-800 cursor-pointer transition-colors"
-        >
-          {tag}
-        </span>
-      ))}
-    </div>
-
-    {/* Action Bar */}
-    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-      <div className="flex items-center space-x-6">
-        <button 
-          type="button"
-          onClick={() => handleLikePost(post.id)}
-          disabled={!user}
-          className={`flex items-center space-x-2 transition-colors ${
-            post.liked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
-          } ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <FaHeart className={post.liked ? 'fill-current' : ''} />
-          <span className="text-sm font-medium">{post.likes}</span>
-        </button>
-        
-        <button 
-          type="button"
-          onClick={() => {
-            if (!user) {
-              alert('Please log in to view comments.')
-              window.location.href = '/login'
-              return
-            }
-            toggleComments(post.id)
-          }}
-          className={`flex items-center space-x-2 transition-colors ${
-            !user ? 'opacity-50 cursor-not-allowed' : 'text-gray-500 hover:text-blue-500'
-          }`}
-        >
-          <FaComment />
-          <span className="text-sm font-medium">{post.comments}</span>
-        </button>
-        
-        <button 
-          type="button"
-          onClick={() => handleSharePost(post)}
-          disabled={!user}
-          className={`flex items-center space-x-2 transition-colors ${
-            !user ? 'opacity-50 cursor-not-allowed' : 'text-gray-500 hover:text-forest-green-600'
-          }`}
-        >
-          <FaShare />
-          <span className="text-sm font-medium">{post.shares}</span>
-        </button>
-        
-        <button 
-          type="button"
-          onClick={() => handleBookmarkPost(post.id)}
-          disabled={!user}
-          className={`flex items-center space-x-2 transition-colors ${
-            post.bookmarked ? 'text-forest-green-600' : 'text-gray-500 hover:text-forest-green-600'
-          } ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <FaBookmark className={post.bookmarked ? 'fill-current' : ''} />
-          <span className="text-sm font-medium">{post.bookmarks}</span>
-        </button>
-      </div>
-            </div>
-
-    {/* Comments Section */}
-    {showComments[post.id] && (
-      <div className="mt-6 pt-4 border-t border-gray-100">
-        {user ? (
-          <div className="flex space-x-3 mb-4">
-            <Avatar user={user} size="sm" />
-            <div className="flex-1 flex space-x-2">
-              <input
-                type="text"
-                placeholder="Write a comment..."
-                value={newComment[post.id] || ''}
-                onChange={(e) => setNewComment(prev => ({ ...prev, [post.id]: e.target.value }))}
-                className="flex-1 px-4 py-2 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-forest-green-600 focus:border-transparent"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    handleAddCommentToPost(post.id, newComment[post.id])
-                  }
-                }}
-              />
+        <div className="flex items-center space-x-2">
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${post.tag === 'Question' ? 'bg-blue-100 text-blue-700' :
+              post.tag === 'Success Story' ? 'bg-forest-green-100 text-forest-green-700' :
+                'bg-orange-100 text-orange-700'
+            }`}>
+            {post.tag}
+          </span>
+          {/* Edit/Delete Controls - Only show for post owner */}
+          {user && post.user.name === (user.name || user.displayName) && (
+            <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 type="button"
-                onClick={() => handleAddCommentToPost(post.id, newComment[post.id])}
-                className="px-4 py-2 bg-forest-green-600 text-white rounded-full hover:bg-forest-green-700 transition-colors"
+                onClick={() => setEditingPost({ ...post, isEditing: true })}
+                className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                title="Edit post"
               >
-                <FaPaperPlane className="w-4 h-4" />
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeletePost(post.id)}
+                className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                title="Delete post"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
               </button>
             </div>
-          </div>
-        ) : (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-blue-700 text-sm">
-              <FaComment className="inline mr-2" />
-              Please <a href="/signup" className="underline font-medium">sign up</a> to comment on posts.
-            </p>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          {post.commentsList.map((comment) => (
-            <div key={comment.id} className="flex space-x-3">
-              <Avatar user={comment.user} size="sm" />
-              <div className="flex-1">
-                <div className="bg-gray-50 rounded-2xl px-4 py-3">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <span className="font-semibold text-sm text-gray-900">{comment.user.name}</span>
-                    <span className="text-gray-500 text-xs">{comment.timeAgo}</span>
-                  </div>
-                  <p className="text-gray-700 text-sm">{comment.content}</p>
-                </div>
-              </div>
-            </div>
-          ))}
+          )}
         </div>
       </div>
-    )}
-  </div>
+
+      {/* Post Content */}
+      <h3 className="text-lg font-bold text-gray-900 mb-2">{post.title}</h3>
+      <div className="mb-3">
+        <p
+          ref={contentRef}
+          className={`text-sm text-gray-700 leading-relaxed ${!isExpanded && showReadMore ? 'overflow-hidden' : ''
+            }`}
+          style={{
+            display: !isExpanded && showReadMore ? '-webkit-box' : 'block',
+            WebkitLineClamp: !isExpanded && showReadMore ? 3 : 'unset',
+            WebkitBoxOrient: 'vertical'
+          }}
+        >
+          {post.content}
+        </p>
+        {showReadMore && (
+          <button
+            onClick={toggleExpanded}
+            className="text-forest-green-600 hover:text-forest-green-800 text-sm font-medium mt-1 transition-colors"
+          >
+            {isExpanded ? 'Read less' : 'Read more'}
+          </button>
+        )}
+      </div>
+
+      {/* Post Image */}
+      {post.image && (
+        <div className="mb-3">
+          <img
+            src={post.image}
+            alt="Post content"
+            className="w-full h-48 object-cover rounded-lg"
+          />
+        </div>
+      )}
+
+      {/* Hashtags */}
+      <div className="flex flex-wrap gap-1 mb-3">
+        {post.hashtags.map((tag, index) => (
+          <span
+            key={index}
+            className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs hover:bg-forest-green-100 hover:text-forest-green-800 cursor-pointer transition-colors"
+          >
+            {tag}
+          </span>
+        ))}
+      </div>
+
+      {/* Action Bar */}
+      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+        <div className="flex items-center space-x-6">
+          <button
+            type="button"
+            onClick={() => handleLikePost(post.id)}
+            disabled={!user}
+            className={`flex items-center space-x-2 transition-colors ${post.liked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
+              } ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <FaHeart className={post.liked ? 'fill-current' : ''} />
+            <span className="text-sm font-medium">{post.likes}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (!user) {
+                alert('Please log in to view comments.')
+                window.location.href = '/login'
+                return
+              }
+              toggleComments(post.id)
+            }}
+            className={`flex items-center space-x-2 transition-colors ${!user ? 'opacity-50 cursor-not-allowed' : 'text-gray-500 hover:text-blue-500'
+              }`}
+          >
+            <FaComment />
+            <span className="text-sm font-medium">{post.comments}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSharePost(post)}
+            disabled={!user}
+            className={`flex items-center space-x-2 transition-colors ${!user ? 'opacity-50 cursor-not-allowed' : 'text-gray-500 hover:text-forest-green-600'
+              }`}
+          >
+            <FaShare />
+            <span className="text-sm font-medium">{post.shares}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleBookmarkPost(post.id)}
+            disabled={!user}
+            className={`flex items-center space-x-2 transition-colors ${post.bookmarked ? 'text-forest-green-600' : 'text-gray-500 hover:text-forest-green-600'
+              } ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <FaBookmark className={post.bookmarked ? 'fill-current' : ''} />
+            <span className="text-sm font-medium">{post.bookmarks}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Comments Section */}
+      {showComments[post.id] && (
+        <div className="mt-6 pt-4 border-t border-gray-100">
+          {user ? (
+            <div className="flex space-x-3 mb-4">
+              <Avatar user={user} size="sm" />
+              <div className="flex-1 flex space-x-2">
+                <input
+                  type="text"
+                  placeholder="Write a comment..."
+                  value={newComment[post.id] || ''}
+                  onChange={(e) => setNewComment(prev => ({ ...prev, [post.id]: e.target.value }))}
+                  className="flex-1 px-4 py-2 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-forest-green-600 focus:border-transparent"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleAddCommentToPost(post.id, newComment[post.id])
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleAddCommentToPost(post.id, newComment[post.id])}
+                  className="px-4 py-2 bg-forest-green-600 text-white rounded-full hover:bg-forest-green-700 transition-colors"
+                >
+                  <FaPaperPlane className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-blue-700 text-sm">
+                <FaComment className="inline mr-2" />
+                Please <a href="/signup" className="underline font-medium">sign up</a> to comment on posts.
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            {post.commentsList.map((comment) => (
+              <div key={comment.id} className="flex space-x-3">
+                <Avatar user={comment.user} size="sm" />
+                <div className="flex-1">
+                  <div className="bg-gray-50 rounded-2xl px-4 py-3">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <span className="font-semibold text-sm text-gray-900">{comment.user.name}</span>
+                      <span className="text-gray-500 text-xs">{comment.timeAgo}</span>
+                    </div>
+                    <p className="text-gray-700 text-sm">{comment.content}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
 const Blog = () => {
   const { user } = useAuth()
   const [activeFilter, setActiveFilter] = useState('All Posts')
-  const [sortBy, setSortBy] = useState('Newest')
+  // "For You" = personalized/hot ranking, "Latest" = pure newest first
+  const [sortBy, setSortBy] = useState('For You')
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreatePost, setShowCreatePost] = useState(false)
   const [showComments, setShowComments] = useState({})
@@ -284,7 +293,7 @@ const Blog = () => {
   })
   const [topContributors, setTopContributors] = useState([])
   const [trendingHashtags, setTrendingHashtags] = useState([])
-  
+
   // Initialize with empty array - posts will be loaded from API
   const [posts, setPosts] = useState([])
 
@@ -308,7 +317,7 @@ const Blog = () => {
   // Quick Tips slideshow effect
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentTipIndex((prevIndex) => 
+      setCurrentTipIndex((prevIndex) =>
         (prevIndex + 1) % quickTips.length
       )
     }, 2000)
@@ -336,22 +345,10 @@ const Blog = () => {
     return posts
   }
 
-  // Sort posts based on sortBy
+  // Sort posts based on sortBy (backend already returns correctly ordered lists)
+  // Here we just return the filtered list to avoid double-sorting.
   const getSortedPosts = (filteredPosts) => {
-    const sorted = [...filteredPosts]
-    
-    switch (sortBy) {
-      case 'Newest':
-        return sorted.sort((a, b) => new Date(b.createdAt || b.id) - new Date(a.createdAt || a.id))
-      case 'Most Liked':
-        return sorted.sort((a, b) => b.likes - a.likes)
-      case 'Most Commented':
-        return sorted.sort((a, b) => b.comments - a.comments)
-      case 'Trending':
-        return sorted.sort((a, b) => (b.likes + b.comments + b.shares) - (a.likes + a.comments + a.shares))
-      default:
-        return sorted
-    }
+    return filteredPosts
   }
 
   // Search posts
@@ -360,19 +357,19 @@ const Blog = () => {
       await loadPosts()
       return
     }
-    
+
     try {
       setLoading(true)
       const response = await apiCall(`/blog/search?q=${encodeURIComponent(query.trim())}`)
-      
+
       if (response.success && response.data) {
         const backendPosts = Array.isArray(response.data) ? response.data : response.data.posts || []
         const transformedPosts = backendPosts.map(post => ({
           id: post._id || post.id,
           user: {
             name: post.authorId?.name || post.author || 'Anonymous',
-            username: `@${(post.authorId?.name || post.author || 'user').toLowerCase().replace(' ', '_')}`,
-            avatar: post.authorId?.avatar || null
+            avatar: post.authorId?.avatar || null,
+            role: post.authorRole || post.authorId?.role || 'beginner'
           },
           timeAgo: formatTimeAgo(post.createdAt),
           tag: post.category === 'success_story' ? 'Success Story' : post.category === 'question' ? 'Question' : '',
@@ -406,10 +403,10 @@ const Blog = () => {
       window.location.href = '/login'
       return
     }
-    
+
     const shareUrl = `${window.location.origin}/blog/${post.id}`
     const shareText = `Check out this post: "${post.title}"`
-    
+
     if (navigator.share) {
       try {
         await navigator.share({
@@ -417,14 +414,14 @@ const Blog = () => {
           text: shareText,
           url: shareUrl
         })
-        
+
         // Update share count
-        setPosts(posts.map(p => 
-          p.id === post.id 
+        setPosts(posts.map(p =>
+          p.id === post.id
             ? { ...p, shares: p.shares + 1 }
             : p
         ))
-        
+
         // Send share to backend
         try {
           await apiCall(`/blog/${post.id}/share`, { method: 'POST' })
@@ -441,7 +438,7 @@ const Blog = () => {
       copyToClipboard(shareUrl)
     }
   }
-  
+
   const copyToClipboard = async (text) => {
     try {
       await navigator.clipboard.writeText(text)
@@ -459,25 +456,29 @@ const Blog = () => {
   const loadPosts = async () => {
     try {
       setLoading(true)
+
+      // Map UI sort to backend sort parameter
+      const sortParam = sortBy === 'Latest' ? 'newest' : 'hot'
+
       // For non-authenticated users, only allow public endpoints
-      const endpoint = !user 
-        ? `/blog?sort=newest&page=${currentPage}&limit=10`
+      const endpoint = !user
+        ? `/blog?sort=${sortParam}&page=${currentPage}&limit=10`
         : activeFilter === 'My Posts'
           ? `/blog/mine?sort=newest&page=${currentPage}&limit=10`
           : activeFilter === 'Saved Posts'
             ? `/blog/saved?sort=newest&page=${currentPage}&limit=10`
-            : `/blog?sort=newest&page=${currentPage}&limit=10`
+            : `/blog?sort=${sortParam}&page=${currentPage}&limit=10`
 
       const response = await apiCall(endpoint)
-      
+
       if (response.success && response.data) {
         const backendPosts = Array.isArray(response.data) ? response.data : response.data.posts || []
         const transformedPosts = backendPosts.map(post => ({
           id: post._id || post.id,
           user: {
             name: post.authorId?.name || post.author || 'Anonymous',
-            username: `@${(post.authorId?.name || post.author || 'user').toLowerCase().replace(' ', '_')}`,
-            avatar: post.authorId?.avatar || null
+            avatar: post.authorId?.avatar || null,
+            role: post.authorRole || post.authorId?.role || 'beginner'
           },
           timeAgo: formatTimeAgo(post.createdAt),
           tag: post.category === 'success_story' ? 'Success Story' : post.category === 'question' ? 'Question' : '',
@@ -499,7 +500,7 @@ const Blog = () => {
           }))
         }))
         setPosts(transformedPosts)
-        
+
         // Update pagination info if available
         if (response.data.totalPages) {
           setTotalPages(response.data.totalPages)
@@ -519,7 +520,7 @@ const Blog = () => {
     const diffMs = now - date
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
     const diffDays = Math.floor(diffHours / 24)
-    
+
     if (diffDays > 0) return `${diffDays}d`
     if (diffHours > 0) return `${diffHours}h`
     return 'now'
@@ -528,7 +529,7 @@ const Blog = () => {
   // Load user-specific counts
   const loadUserCounts = async () => {
     if (!user) return
-    
+
     try {
       // Get my posts count
       const myPostsResponse = await apiCall('/blog/mine?count=true')
@@ -557,7 +558,7 @@ const Blog = () => {
       const response = await apiCall('/blog/stats')
       if (response.success) {
         setCommunityStats({
-          totalMembers: response.data.totalMembers || 0,
+          totalMembers: response.data.totalUsers || 0,
           activeToday: response.data.activeToday || 0
         })
       }
@@ -604,37 +605,35 @@ const Blog = () => {
     "🔍 Research before repotting - timing matters"
   ]
 
-  const sidebarItems = user 
+  const sidebarItems = user
     ? [
-        { name: 'My Feed', icon: FaUsers, active: true, count: null },
-        { name: 'My Posts', icon: FaFileAlt, active: false, count: myPostsCount },
-        { name: 'Saved Posts', icon: FaBookmark, active: false, count: savedPostsCount },
-        { name: 'Questions', icon: FaQuestionCircle, active: false, count: null },
-        { name: 'Success Story', icon: FaStar, active: false, count: null },
-        { name: 'Trending', icon: FaFire, active: false, count: null }
-      ]
+      { name: 'All Posts', icon: FaUsers, active: true, count: null },
+      { name: 'My Posts', icon: FaFileAlt, active: false, count: myPostsCount },
+      { name: 'Saved Posts', icon: FaBookmark, active: false, count: savedPostsCount },
+      { name: 'Questions', icon: FaQuestionCircle, active: false, count: null },
+      { name: 'Success Story', icon: FaStar, active: false, count: null }
+    ]
     : [
-        { name: 'All Posts', icon: FaUsers, active: true, count: null },
-        { name: 'Questions', icon: FaQuestionCircle, active: false, count: null },
-        { name: 'Success Story', icon: FaStar, active: false, count: null },
-        { name: 'Trending', icon: FaFire, active: false, count: null }
-      ]
+      { name: 'All Posts', icon: FaUsers, active: true, count: null },
+      { name: 'Questions', icon: FaQuestionCircle, active: false, count: null },
+      { name: 'Success Story', icon: FaStar, active: false, count: null }
+    ]
 
-  const filters = user 
+  const filters = user
     ? ['All Posts', 'My Posts', 'Saved Posts', 'Questions', 'Success Stories']
     : ['All Posts', 'Questions', 'Success Stories']
 
   const handleLike = (postId) => {
-    setPosts(posts.map(post => 
-      post.id === postId 
+    setPosts(posts.map(post =>
+      post.id === postId
         ? { ...post, liked: !post.liked, likes: post.liked ? post.likes - 1 : post.likes + 1 }
         : post
     ))
   }
 
   const handleBookmark = (postId) => {
-    setPosts(posts.map(post => 
-      post.id === postId 
+    setPosts(posts.map(post =>
+      post.id === postId
         ? { ...post, bookmarked: !post.bookmarked, bookmarks: post.bookmarked ? post.bookmarks - 1 : post.bookmarks + 1 }
         : post
     ))
@@ -646,15 +645,15 @@ const Blog = () => {
       window.location.href = '/login'
       return
     }
-    
+
     try {
-      const response = await apiCall(`/blog/${postId}/like`, { 
+      const response = await apiCall(`/blog/${postId}/like`, {
         method: 'POST'
       })
-      
+
       if (response.success) {
-        setPosts(posts.map(post => 
-          post.id === postId 
+        setPosts(posts.map(post =>
+          post.id === postId
             ? { ...post, liked: response.liked, likes: response.data.likeCount }
             : post
         ))
@@ -673,15 +672,15 @@ const Blog = () => {
       window.location.href = '/login'
       return
     }
-    
+
     try {
-      const response = await apiCall(`/blog/${postId}/bookmark`, { 
+      const response = await apiCall(`/blog/${postId}/bookmark`, {
         method: 'POST'
       })
-      
+
       if (response.success) {
-        setPosts(posts.map(post => 
-          post.id === postId 
+        setPosts(posts.map(post =>
+          post.id === postId
             ? { ...post, bookmarked: response.bookmarked, bookmarks: response.bookmarkCount }
             : post
         ))
@@ -703,7 +702,7 @@ const Blog = () => {
 
   const handleAddComment = (postId) => {
     if (!newComment[postId]?.trim()) return
-    
+
     const comment = {
       id: Date.now(),
       user: { name: user?.name || 'You', avatar: user?.profilePhoto },
@@ -712,13 +711,13 @@ const Blog = () => {
       replies: []
     }
 
-    setPosts(posts.map(post => 
-      post.id === postId 
-        ? { 
-            ...post, 
-            commentsList: [...post.commentsList, comment],
-            comments: post.comments + 1
-          }
+    setPosts(posts.map(post =>
+      post.id === postId
+        ? {
+          ...post,
+          commentsList: [...post.commentsList, comment],
+          comments: post.comments + 1
+        }
         : post
     ))
 
@@ -727,40 +726,40 @@ const Blog = () => {
 
   const handleAddCommentToPost = useCallback(async (postId, content) => {
     if (!content?.trim()) return
-    
+
     if (!user) {
       alert('Please log in to add a comment.')
       window.location.href = '/login'
       return
     }
-    
+
     try {
       const response = await apiCall(`/blog/${postId}/comments`, {
         method: 'POST',
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           content: content.trim()
         })
       })
-      
+
       if (response.success) {
         const newComment = {
           id: Date.now(),
-          user: { 
-            name: user?.name || 'You', 
-            avatar: user?.profilePhoto 
+          user: {
+            name: user?.name || 'You',
+            avatar: user?.profilePhoto
           },
           content: content.trim(),
           timeAgo: 'now',
           replies: []
         }
 
-        setPosts(posts.map(post => 
-          post.id === postId 
-            ? { 
-                ...post, 
-                commentsList: [...post.commentsList, newComment],
-                comments: post.comments + 1
-              }
+        setPosts(posts.map(post =>
+          post.id === postId
+            ? {
+              ...post,
+              commentsList: [...post.commentsList, newComment],
+              comments: post.comments + 1
+            }
             : post
         ))
 
@@ -774,8 +773,8 @@ const Blog = () => {
 
   const handleEditPost = async (postId, updatedData) => {
     try {
-      const response = await apiCall(`/blog/${postId}`, {
-        method: 'PUT',
+      const response = await apiCall(`/blog/${postId}/edit`, {
+        method: 'POST',
         body: JSON.stringify({
           title: updatedData.title.trim(),
           content: updatedData.content.trim(),
@@ -791,13 +790,13 @@ const Blog = () => {
         // Update counts
         loadUserCounts()
         loadTopContributors()
-        setMessage('Post updated successfully!')
-        setTimeout(() => setMessage(''), 3000)
+        setMessage('Edit request submitted successfully! It will be reviewed by an admin.')
+        setTimeout(() => setMessage(''), 5000)
       }
     } catch (error) {
-      console.error('Error updating post:', error)
-      setMessage('Error updating post. Please try again.')
-      setTimeout(() => setMessage(''), 3000)
+      console.error('Error submitting edit request:', error)
+      setMessage(`Error submitting edit request: ${error.message || 'Please try again.'}`)
+      setTimeout(() => setMessage(''), 5000)
     }
   }
 
@@ -835,7 +834,7 @@ const Blog = () => {
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-cream-300 rounded-full opacity-20 animate-pulse delay-1000"></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-forest-green-100 rounded-full opacity-10 animate-pulse delay-500"></div>
       </div>
-      
+
       {/* Signup Banner for non-authenticated users */}
       {!user && (
         <div className="bg-gradient-to-r from-forest-green-500 to-blue-600 text-white py-3">
@@ -847,8 +846,8 @@ const Blog = () => {
                   Join our community to like, comment, and create posts!
                 </span>
               </div>
-              <a 
-                href="/signup" 
+              <a
+                href="/signup"
                 className="bg-white text-forest-green-500 px-4 py-1 rounded-full text-sm font-medium hover:bg-gray-100 transition-colors"
               >
                 Sign Up Now
@@ -857,7 +856,7 @@ const Blog = () => {
           </div>
         </div>
       )}
-      
+
       {/* Search Bar and Content */}
       <div className="bg-gradient-to-r from-forest-green-50 via-cream-100 to-forest-green-100 relative z-10 pt-16">
         <div className="w-full px-6 sm:px-8 lg:px-12 xl:px-16 py-4">
@@ -919,319 +918,348 @@ const Blog = () => {
         )}
 
         <div className="w-full px-6 sm:px-8 lg:px-12 xl:px-16 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-12 lg:grid-cols-12 xl:grid-cols-10 gap-4 md:gap-6">
-          {/* Left Sidebar */}
-          <div className="md:col-span-4 lg:col-span-2 xl:col-span-2 order-1">
-            <div className="sticky top-8 space-y-4 bg-gray-50 p-3 md:p-4 rounded-2xl">
-              {/* Navigation Menu */}
-              <div className="bg-white rounded-xl shadow-sm p-4">
-                <nav className="space-y-2">
-                  {sidebarItems.map((item) => (
+          <div className="grid grid-cols-1 md:grid-cols-12 lg:grid-cols-12 xl:grid-cols-10 gap-4 md:gap-6">
+            {/* Left Sidebar */}
+            <div className="md:col-span-4 lg:col-span-2 xl:col-span-2 order-1">
+              <div className="sticky top-8 space-y-4 bg-gray-50 p-3 md:p-4 rounded-2xl">
+                {/* Navigation Menu */}
+                <div className="bg-white rounded-xl shadow-sm p-4">
+                  <nav className="space-y-2">
+                    {sidebarItems.map((item) => (
+                      <button
+                        key={item.name}
+                        onClick={() => setActiveFilter(item.name)}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${activeFilter === item.name
+                            ? 'bg-forest-green-50 text-forest-green-700 border border-forest-green-200'
+                            : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <item.icon className="w-4 h-4" />
+                          <span className="font-medium text-sm">{item.name}</span>
+                        </div>
+                        {item.count && (
+                          <span className="px-2 py-1 bg-forest-green-100 text-forest-green-700 text-xs font-medium rounded-full">
+                            {item.count}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </nav>
+                </div>
+
+                {/* Blog Stats */}
+                <div className="bg-gradient-to-r from-forest-green-600 to-forest-green-700 rounded-xl shadow-sm p-4 text-white">
+                  <h3 className="font-bold text-base mb-3">Blog Community</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-forest-green-100">Total Readers</span>
+                      <span className="font-bold text-xl">{blogStats.totalMembers.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-forest-green-100">Active Today</span>
+                      <span className="font-bold text-xl">{blogStats.activeToday.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Community Guidelines */}
+                <div className="bg-white rounded-xl shadow-sm p-4">
+                  <h3 className="font-bold text-base mb-2">Community Guidelines</h3>
+                  <p className="text-gray-600 text-xs mb-3">
+                    Keep our blog community helpful, respectful, and informative for all plant enthusiasts.
+                  </p>
+                  <button
+                    onClick={() => setShowGuidelines(true)}
+                    className="w-full px-4 py-2 bg-forest-green-100 text-forest-green-800 rounded-lg hover:bg-forest-green-200 transition-colors font-medium"
+                  >
+                    Read Full Guidelines
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Center Feed (independent scroll) */}
+            <div className="md:col-span-8 lg:col-span-7 xl:col-span-6 order-2 md:order-2 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+              {/* Filters and Sorting */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 md:mb-6 gap-3 md:gap-4">
+                <div className="flex flex-wrap gap-1 md:gap-2">
+                  {filters.map((filter) => (
                     <button
-                      key={item.name}
-                      onClick={() => setActiveFilter(item.name)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
-                        activeFilter === item.name
-                          ? 'bg-forest-green-50 text-forest-green-700 border border-forest-green-200'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
+                      key={filter}
+                      type="button"
+                      onClick={() => setActiveFilter(filter)}
+                      className={`px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-medium transition-colors ${filter === activeFilter
+                          ? 'bg-forest-green-600 text-white'
+                          : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                        }`}
                     >
-                      <div className="flex items-center space-x-2">
-                        <item.icon className="w-4 h-4" />
-                        <span className="font-medium text-sm">{item.name}</span>
-                      </div>
-                      {item.count && (
-                        <span className="px-2 py-1 bg-forest-green-100 text-forest-green-700 text-xs font-medium rounded-full">
-                          {item.count}
-                        </span>
-                      )}
+                      {filter}
                     </button>
                   ))}
-                </nav>
-              </div>
-
-              {/* Blog Stats */}
-              <div className="bg-gradient-to-r from-forest-green-600 to-forest-green-700 rounded-xl shadow-sm p-4 text-white">
-                <h3 className="font-bold text-base mb-3">Blog Community</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-forest-green-100">Total Readers</span>
-                    <span className="font-bold text-xl">{blogStats.totalMembers.toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-forest-green-100">Active Today</span>
-                    <span className="font-bold text-xl">{blogStats.activeToday.toLocaleString()}</span>
-                  </div>
-                  </div>
                 </div>
 
-              {/* Community Guidelines */}
-              <div className="bg-white rounded-xl shadow-sm p-4">
-                <h3 className="font-bold text-base mb-2">Community Guidelines</h3>
-                <p className="text-gray-600 text-xs mb-3">
-                  Keep our blog community helpful, respectful, and informative for all plant enthusiasts.
-                </p>
-                <button 
-                  onClick={() => setShowGuidelines(true)}
-                  className="w-full px-4 py-2 bg-forest-green-100 text-forest-green-800 rounded-lg hover:bg-forest-green-200 transition-colors font-medium"
-                >
-                  Read Full Guidelines
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Center Feed */}
-          <div className="md:col-span-8 lg:col-span-7 xl:col-span-6 order-2 md:order-2">
-            {/* Filters and Sorting */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 md:mb-6 gap-3 md:gap-4">
-              <div className="flex flex-wrap gap-1 md:gap-2">
-                {filters.map((filter) => (
-                  <button
-                    key={filter}
-                    type="button"
-                    onClick={() => setActiveFilter(filter)}
-                    className={`px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-medium transition-colors ${
-                      filter === activeFilter
-                        ? 'bg-forest-green-600 text-white'
-                        : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
-                    }`}
+                <div className="flex items-center space-x-2">
+                  <FaSortDown className="text-gray-400" />
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="px-2 md:px-3 py-1.5 md:py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-green-600 bg-white text-xs md:text-sm"
                   >
-                    {filter}
-                  </button>
-                ))}
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <FaSortDown className="text-gray-400" />
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="px-2 md:px-3 py-1.5 md:py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-green-600 bg-white text-xs md:text-sm"
-                >
-                  <option value="Newest">Newest</option>
-                  <option value="Most Liked">Most Liked</option>
-                  <option value="Most Commented">Most Commented</option>
-                  <option value="Trending">Trending</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Message Display */}
-            {message && (
-              <div className={`mb-4 p-3 rounded-lg text-sm text-center ${
-                message.includes('successfully') ? 'bg-forest-green-100 text-forest-green-700' : 'bg-red-100 text-red-700'
-              }`}>
-                {message}
-              </div>
-            )}
-
-            {/* Posts */}
-            <div>
-              {loading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest-green-600"></div>
+                    <option value="For You">For You</option>
+                    <option value="Latest">Latest</option>
+                  </select>
                 </div>
-              ) : filteredAndSortedPosts.length > 0 ? (
-                filteredAndSortedPosts.map((post) => (
-                  <PostCard 
-                    key={post.id} 
-                    post={post}
-                    user={user}
-                    showComments={showComments}
-                    newComment={newComment}
-                    setNewComment={setNewComment}
-                    toggleComments={toggleComments}
-                    handleAddCommentToPost={handleAddCommentToPost}
-                    handleLikePost={handleLikePost}
-                    handleSharePost={handleSharePost}
-                    handleBookmarkPost={handleBookmarkPost}
-                    handleDeletePost={handleDeletePost}
-                    setEditingPost={setEditingPost}
-                  />
-                ))
-              ) : (
-                <div className="text-center py-12">
-                  <div className="text-gray-400 mb-4">
-                    <svg className="mx-auto h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
+              </div>
+
+              {/* Message Display */}
+              {message && (
+                <div className={`mb-4 p-3 rounded-lg text-sm text-center ${message.includes('successfully') ? 'bg-forest-green-100 text-forest-green-700' : 'bg-red-100 text-red-700'
+                  }`}>
+                  {message}
+                </div>
+              )}
+
+              {/* Posts */}
+              <div>
+                {loading ? (
+                  <div className="space-y-4">
+                    {Array.from({ length: 5 }).map((_, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 animate-pulse"
+                      >
+                        {/* Header skeleton */}
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 rounded-full bg-gray-200" />
+                            <div>
+                              <div className="h-3 w-32 bg-gray-200 rounded mb-2" />
+                              <div className="h-2 w-20 bg-gray-200 rounded" />
+                            </div>
+                          </div>
+                          <div className="h-6 w-20 bg-gray-200 rounded-full" />
+                        </div>
+
+                        {/* Title + content skeleton */}
+                        <div className="mb-3 space-y-2">
+                          <div className="h-4 w-3/4 bg-gray-200 rounded" />
+                          <div className="h-3 w-full bg-gray-200 rounded" />
+                          <div className="h-3 w-5/6 bg-gray-200 rounded" />
+                        </div>
+
+                        {/* Image skeleton */}
+                        <div className="mb-3 h-40 bg-gray-200 rounded-lg" />
+
+                        {/* Action bar skeleton */}
+                        <div className="pt-4 border-t border-gray-100 flex items-center space-x-6">
+                          {Array.from({ length: 4 }).map((__, i) => (
+                            <div key={i} className="flex items-center space-x-2">
+                              <div className="w-4 h-4 bg-gray-200 rounded-full" />
+                              <div className="w-8 h-3 bg-gray-200 rounded" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No posts yet</h3>
-                  <p className="text-gray-500 mb-6">
-                    {user 
-                      ? "Be the first to share your gardening experience with the community!" 
-                      : "Sign up to create the first post and start the conversation!"
-                    }
-                  </p>
-                  {user ? (
-                    <button
-                      onClick={() => setShowCreatePost(true)}
-                      className="px-6 py-3 bg-forest-green-600 text-white rounded-lg hover:bg-forest-green-700 transition-colors font-medium"
-                    >
-                      Create First Post
-                    </button>
-                  ) : (
-                    <div className="flex justify-center space-x-3">
-                      <a
-                        href="/signup"
+                ) : filteredAndSortedPosts.length > 0 ? (
+                  filteredAndSortedPosts.map((post) => (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      user={user}
+                      showComments={showComments}
+                      newComment={newComment}
+                      setNewComment={setNewComment}
+                      toggleComments={toggleComments}
+                      handleAddCommentToPost={handleAddCommentToPost}
+                      handleLikePost={handleLikePost}
+                      handleSharePost={handleSharePost}
+                      handleBookmarkPost={handleBookmarkPost}
+                      handleDeletePost={handleDeletePost}
+                      setEditingPost={setEditingPost}
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="text-gray-400 mb-4">
+                      <svg className="mx-auto h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No posts yet</h3>
+                    <p className="text-gray-500 mb-6">
+                      {user
+                        ? "Be the first to share your gardening experience with the community!"
+                        : "Sign up to create the first post and start the conversation!"
+                      }
+                    </p>
+                    {user ? (
+                      <button
+                        onClick={() => setShowCreatePost(true)}
                         className="px-6 py-3 bg-forest-green-600 text-white rounded-lg hover:bg-forest-green-700 transition-colors font-medium"
                       >
-                        Sign Up
-                      </a>
-                      <a
-                        href="/login"
-                        className="px-6 py-3 border border-forest-green-600 text-forest-green-600 rounded-lg hover:bg-forest-green-50 transition-colors font-medium"
-                      >
-                        Login
-                      </a>
-                    </div>
-                  )}
+                        Create First Post
+                      </button>
+                    ) : (
+                      <div className="flex justify-center space-x-3">
+                        <a
+                          href="/signup"
+                          className="px-6 py-3 bg-forest-green-600 text-white rounded-lg hover:bg-forest-green-700 transition-colors font-medium"
+                        >
+                          Sign Up
+                        </a>
+                        <a
+                          href="/login"
+                          className="px-6 py-3 border border-forest-green-600 text-forest-green-600 rounded-lg hover:bg-forest-green-50 transition-colors font-medium"
+                        >
+                          Login
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center space-x-2 mt-8">
+                  <button
+                    type="button"
+                    onClick={() => loadPosts(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+
+                  <div className="flex space-x-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      const pageNum = i + 1
+                      return (
+                        <button
+                          key={pageNum}
+                          type="button"
+                          onClick={() => loadPosts(pageNum)}
+                          className={`px-3 py-2 text-sm font-medium rounded-md ${currentPage === pageNum
+                              ? 'bg-forest-green-600 text-white'
+                              : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                            }`}
+                        >
+                          {pageNum}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => loadPosts(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
                 </div>
               )}
             </div>
-            
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center space-x-2 mt-8">
-                <button
-                  type="button"
-                  onClick={() => loadPosts(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                
-                <div className="flex space-x-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const pageNum = i + 1
-                    return (
+
+            {/* Right Sidebar */}
+            <div className="md:col-span-12 lg:col-span-3 xl:col-span-2 order-3">
+              <div className="lg:sticky lg:top-8 space-y-4 bg-gray-50 p-3 md:p-4 rounded-2xl">
+                {/* Trending Hashtags */}
+                <div className="bg-white rounded-xl shadow-sm p-4">
+                  <h3 className="font-bold text-base mb-3 flex items-center">
+                    <FaHashtag className="mr-2 text-forest-green-600" />
+                    Trending Hashtags
+                  </h3>
+                  <div className="space-y-2">
+                    {trendingHashtags.length > 0 ? (
+                      trendingHashtags.map((item, index) => (
+                        <div key={index} className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-forest-green-600 text-sm">{item.tag}</div>
+                            <div className="text-xs text-forest-green-600">{item.count} posts</div>
+                          </div>
+                          <div className={`w-2 h-2 rounded-full ${item.trend === 'up' ? 'bg-forest-green-600' : 'bg-red-500'
+                            }`}></div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center text-gray-500 py-4">
+                        <div className="text-gray-400 mb-2">🔍</div>
+                        <div className="text-sm">No trending hashtags yet</div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          Hashtags will appear here as users create posts
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Top Contributors */}
+                <div className="bg-white rounded-xl shadow-sm p-4">
+                  <h3 className="font-bold text-base mb-3 flex items-center">
+                    <FaTrophy className="mr-2 text-yellow-500" />
+                    Top Contributors
+                  </h3>
+                  <div className="space-y-3">
+                    {topContributors.length > 0 ? (
+                      topContributors.map((contributor, index) => (
+                        <div key={index} className="flex items-center space-x-3">
+                          <span className={`text-sm font-bold w-4 ${index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-amber-600' : 'text-gray-600'}`}>
+                            {index + 1}.
+                          </span>
+                          <Avatar user={{ name: contributor.name, avatar: contributor.avatar }} size="sm" />
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-900 text-sm">{contributor.name}</div>
+                            <div className="text-xs text-gray-500">{contributor.postCount} posts</div>
+                          </div>
+                          {index === 0 && <FaTrophy className="text-yellow-500 text-xs" />}
+                          {index === 1 && <div className="w-3 h-3 rounded-full bg-gray-400"></div>}
+                          {index === 2 && <div className="w-3 h-3 rounded-full bg-amber-600"></div>}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4">
+                        <div className="text-gray-500 text-sm">No contributors yet</div>
+                        <div className="text-gray-400 text-xs">Be the first to create a post!</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Quick Tips Slideshow */}
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl shadow-sm p-4 overflow-hidden">
+                  <h3 className="font-bold text-base mb-3 text-gray-900">💡 Quick Tips</h3>
+                  <div className="relative h-20 flex items-center justify-center">
+                    <div
+                      key={currentTipIndex}
+                      className="text-xs text-gray-700 p-3 bg-white rounded-lg text-center transition-all duration-500 ease-in-out transform hover:scale-105"
+                      style={{
+                        animation: 'zoomOut 2s ease-in-out',
+                      }}
+                    >
+                      {quickTips[currentTipIndex]}
+                    </div>
+                  </div>
+
+                  {/* Slide indicators */}
+                  <div className="flex justify-center space-x-1 mt-3">
+                    {quickTips.map((_, index) => (
                       <button
-                        key={pageNum}
-                        type="button"
-                        onClick={() => loadPosts(pageNum)}
-                        className={`px-3 py-2 text-sm font-medium rounded-md ${
-                          currentPage === pageNum
-                            ? 'bg-forest-green-600 text-white'
-                            : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    )
-                  })}
-                </div>
-                
-                <button
-                  type="button"
-                  onClick={() => loadPosts(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Right Sidebar */}
-          <div className="md:col-span-12 lg:col-span-3 xl:col-span-2 order-3">
-            <div className="lg:sticky lg:top-8 space-y-4 bg-gray-50 p-3 md:p-4 rounded-2xl">
-              {/* Trending Hashtags */}
-              <div className="bg-white rounded-xl shadow-sm p-4">
-                <h3 className="font-bold text-base mb-3 flex items-center">
-                  <FaHashtag className="mr-2 text-forest-green-600" />
-                  Trending Hashtags
-                </h3>
-                <div className="space-y-2">
-                  {trendingHashtags.length > 0 ? (
-                    trendingHashtags.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-forest-green-600 text-sm">{item.tag}</div>
-                          <div className="text-xs text-forest-green-600">{item.count} posts</div>
-                        </div>
-                        <div className={`w-2 h-2 rounded-full ${
-                          item.trend === 'up' ? 'bg-forest-green-600' : 'bg-red-500'
-                        }`}></div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center text-gray-500 py-4">
-                      <div className="text-gray-400 mb-2">🔍</div>
-                      <div className="text-sm">No trending hashtags yet</div>
-                      <div className="text-xs text-gray-400 mt-1">
-                        Hashtags will appear here as users create posts
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Top Contributors */}
-              <div className="bg-white rounded-xl shadow-sm p-4">
-                <h3 className="font-bold text-base mb-3 flex items-center">
-                  <FaTrophy className="mr-2 text-yellow-500" />
-                  Top Contributors
-                </h3>
-                <div className="space-y-3">
-                  {topContributors.length > 0 ? (
-                    topContributors.map((contributor, index) => (
-                      <div key={index} className="flex items-center space-x-3">
-                        <span className={`text-sm font-bold w-4 ${index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-amber-600' : 'text-gray-600'}`}>
-                          {index + 1}.
-                        </span>
-                        <Avatar user={{ name: contributor.name, avatar: contributor.avatar }} size="sm" />
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-900 text-sm">{contributor.name}</div>
-                          <div className="text-xs text-gray-500">{contributor.postCount} posts</div>
-                        </div>
-                        {index === 0 && <FaTrophy className="text-yellow-500 text-xs" />}
-                        {index === 1 && <div className="w-3 h-3 rounded-full bg-gray-400"></div>}
-                        {index === 2 && <div className="w-3 h-3 rounded-full bg-amber-600"></div>}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-4">
-                      <div className="text-gray-500 text-sm">No contributors yet</div>
-                      <div className="text-gray-400 text-xs">Be the first to create a post!</div>
-                    </div>
-                  )}
-                </div>
+                        key={index}
+                        onClick={() => setCurrentTipIndex(index)}
+                        className={`w-2 h-2 rounded-full transition-colors ${index === currentTipIndex ? 'bg-blue-500' : 'bg-gray-300'
+                          }`}
+                      />
+                    ))}
                   </div>
-
-              {/* Quick Tips Slideshow */}
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl shadow-sm p-4 overflow-hidden">
-                <h3 className="font-bold text-base mb-3 text-gray-900">💡 Quick Tips</h3>
-                <div className="relative h-20 flex items-center justify-center">
-                  <div 
-                    key={currentTipIndex}
-                    className="text-xs text-gray-700 p-3 bg-white rounded-lg text-center transition-all duration-500 ease-in-out transform hover:scale-105"
-                    style={{
-                      animation: 'zoomOut 2s ease-in-out',
-                    }}
-                  >
-                    {quickTips[currentTipIndex]}
-                  </div>
-                </div>
-                
-                {/* Slide indicators */}
-                <div className="flex justify-center space-x-1 mt-3">
-                  {quickTips.map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setCurrentTipIndex(index)}
-                      className={`w-2 h-2 rounded-full transition-colors ${
-                        index === currentTipIndex ? 'bg-blue-500' : 'bg-gray-300'
-                      }`}
-                    />
-                  ))}
                 </div>
               </div>
             </div>
           </div>
-        </div>
         </div>
       </div>
 
@@ -1248,8 +1276,8 @@ const Blog = () => {
 
       {/* Create Post Modal */}
       {showCreatePost && (
-        <CreatePostModal 
-          onClose={() => setShowCreatePost(false)} 
+        <CreatePostModal
+          onClose={() => setShowCreatePost(false)}
           user={user}
           onCreatePost={async () => {
             // Reset to first page and reload posts
@@ -1257,14 +1285,15 @@ const Blog = () => {
             // Force reload with page 1 to get latest posts
             try {
               setLoading(true)
+              const sortParam = sortBy === 'Latest' ? 'newest' : 'hot'
               const endpoint = activeFilter === 'My Posts'
-                ? '/blog/mine?sort=newest&page=1&limit=10'
+                ? `/blog/mine?sort=newest&page=1&limit=10`
                 : activeFilter === 'Saved Posts'
-                  ? '/blog/saved?sort=newest&page=1&limit=10'
-                  : '/blog?sort=newest&page=1&limit=10'
+                  ? `/blog/saved?sort=newest&page=1&limit=10`
+                  : `/blog?sort=${sortParam}&page=1&limit=10`
 
               const response = await apiCall(endpoint)
-              
+
               if (response.success && response.data) {
                 const backendPosts = Array.isArray(response.data) ? response.data : response.data.posts || []
                 const transformedPosts = backendPosts.map(post => ({
@@ -1288,16 +1317,16 @@ const Blog = () => {
                   bookmarked: user ? post.bookmarks?.some(bookmark => bookmark.userEmail === user.email) || false : false,
                   commentsList: (post.comments || []).map(c => ({
                     id: c._id || `${post._id || post.id}-${c.createdAt}`,
-                    user: { 
-                      name: c.user?.name || c.author || 'Anonymous', 
-                      avatar: c.user?.avatar || null 
+                    user: {
+                      name: c.user?.name || c.author || 'Anonymous',
+                      avatar: c.user?.avatar || null
                     },
                     content: c.content,
                     timeAgo: formatTimeAgo(c.createdAt)
                   }))
                 }))
                 setPosts(transformedPosts)
-                
+
                 // Update pagination info if available
                 if (response.data.totalPages) {
                   setTotalPages(response.data.totalPages)
@@ -1308,7 +1337,7 @@ const Blog = () => {
             } finally {
               setLoading(false)
             }
-            
+
             setShowCreatePost(false)
           }}
         />
@@ -1316,9 +1345,9 @@ const Blog = () => {
 
       {/* Edit Post Modal */}
       {editingPost && (
-        <EditPostModal 
+        <EditPostModal
           post={editingPost}
-          onClose={() => setEditingPost(null)} 
+          onClose={() => setEditingPost(null)}
           onUpdatePost={handleEditPost}
         />
       )}
@@ -1343,20 +1372,33 @@ const CreatePostModal = ({ onClose, user, onCreatePost }) => {
   const [loading, setLoading] = useState(false)
   const fileInputRef = useRef(null)
 
-  const handleImageSelect = (e) => {
+  const handleImageSelect = async (e) => {
     const file = e.target.files[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        setPostData(prev => ({ ...prev, image: event.target.result }))
+    if (!file) return
+
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+
+      const response = await apiCall('/blog/upload-image', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (response.success && response.url) {
+        setPostData(prev => ({ ...prev, image: response.url }))
+      } else {
+        alert('Failed to upload image. Please try again.')
       }
-      reader.readAsDataURL(file)
+    } catch (error) {
+      console.error('Error uploading blog image:', error)
+      alert('Error uploading image. Please try again.')
     }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     // Debug logging
     console.log('Form submission data:', postData)
     console.log('Validation check:', {
@@ -1365,7 +1407,7 @@ const CreatePostModal = ({ onClose, user, onCreatePost }) => {
       tag: postData.tag.trim() || 'empty',
       user: !!user
     })
-    
+
     if (!postData.title.trim() || !postData.content.trim()) {
       alert('Please fill in the required fields: Title and Content')
       return
@@ -1385,29 +1427,29 @@ const CreatePostModal = ({ onClose, user, onCreatePost }) => {
         tags: postData.hashtags ? postData.hashtags.split(' ').filter(tag => tag.startsWith('#')).map(tag => tag.slice(1)) : [],
         image: postData.image
       }
-      
+
       console.log('Sending request data:', requestData)
       console.log('User token:', localStorage.getItem('urbansprout_token'))
-      
+
       const response = await apiCall('/blog', {
         method: 'POST',
         body: JSON.stringify(requestData)
       })
-      
+
       console.log('API response:', response)
 
       if (response.success) {
         // Show server's success message
         alert(response.message || '🎉 Post submitted successfully! Your post will be added to the community after approval.')
-        
+
         // Small delay to ensure database is updated
         setTimeout(() => {
           onCreatePost()
-            // Update counts after creating post
-            loadUserCounts()
-            loadCommunityStats()
-            loadTopContributors()
-            loadTrendingHashtags()
+          // Update counts after creating post
+          loadUserCounts()
+          loadCommunityStats()
+          loadTopContributors()
+          loadTrendingHashtags()
         }, 500)
       } else {
         alert(`Failed to create post: ${response.message || 'Unknown error'}`)
@@ -1450,11 +1492,10 @@ const CreatePostModal = ({ onClose, user, onCreatePost }) => {
                       console.log('Selecting post type:', type)
                       setPostData(prev => ({ ...prev, tag: type }))
                     }}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border-2 ${
-                      postData.tag === type
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border-2 ${postData.tag === type
                         ? type === 'Question' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-forest-green-100 text-forest-green-700 border-forest-green-300'
                         : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border-gray-200'
-                    }`}
+                      }`}
                   >
                     {type}
                     {postData.tag === type && ' ✓'}
@@ -1500,7 +1541,7 @@ const CreatePostModal = ({ onClose, user, onCreatePost }) => {
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest-green-600"
                 placeholder="#PlantCare #IndoorPlants #BeginnerTips"
               />
-        </div>
+            </div>
 
             {/* Image Upload */}
             <div>

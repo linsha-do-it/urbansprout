@@ -46,6 +46,7 @@ const AdminProducts = () => {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterFeatured, setFilterFeatured] = useState('');
@@ -112,6 +113,15 @@ const AdminProducts = () => {
     linkedDiscount: ''
   });
 
+  // Debounce search term to avoid excessive API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500); // Wait 500ms after user stops typing
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   useEffect(() => {
     loadProducts();
     loadCategories();
@@ -120,7 +130,7 @@ const AdminProducts = () => {
     loadCategoriesWithProducts();
     loadAvailableDiscounts();
     loadUpcomingDiscounts();
-  }, [currentPage, searchTerm, filterCategory, filterStatus, filterFeatured, filterStock, filterPriceRange, sortBy, sortOrder]);
+  }, [currentPage, debouncedSearchTerm, filterCategory, filterStatus, filterFeatured, filterStock, filterPriceRange, sortBy, sortOrder]);
 
   const loadProducts = async () => {
     try {
@@ -128,7 +138,7 @@ const AdminProducts = () => {
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '10',
-        ...(searchTerm && { search: searchTerm }),
+        ...(debouncedSearchTerm && { search: debouncedSearchTerm }),
         ...(filterCategory && { category: filterCategory }),
         ...(filterStatus && { status: filterStatus }),
         ...(filterFeatured && { featured: filterFeatured }),
@@ -1087,6 +1097,11 @@ const AdminProducts = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+                {searchTerm !== debouncedSearchTerm && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                  </div>
+                )}
               </div>
             </div>
             <select

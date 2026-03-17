@@ -34,7 +34,7 @@ const NotificationIcon = () => {
 
     // console.log('🔔 Initializing WebSocket connection for user:', user.email);
 
-    const newSocket = io('http://localhost:5002', {
+    const newSocket = io('http://localhost:5001', {
       auth: {
         token: token
       },
@@ -145,6 +145,13 @@ const NotificationIcon = () => {
       return;
     }
 
+    // Check if there's a token before making API calls
+    const token = localStorage.getItem('urbansprout_token');
+    if (!token) {
+      // console.log('🔔 No token available, skipping notifications fetch');
+      return;
+    }
+
     const now = Date.now();
     const cacheKey = `notifications_${userId}`;
     
@@ -208,7 +215,7 @@ const NotificationIcon = () => {
       setLoading(false);
       // console.log('🔔 fetchNotifications completed');
     }
-  }, [user, token]);
+  }, [user]);
 
   // Fetch unread count only (lightweight)
   const fetchUnreadCount = useCallback(async (retryCount = 0) => {
@@ -222,6 +229,13 @@ const NotificationIcon = () => {
     const userId = user?._id || user?.id || user?.uid;
     if (!userId) {
       // console.log('🔔 No user ID available for fetching unread count');
+      return;
+    }
+
+    // Check if there's a token before making API calls
+    const token = localStorage.getItem('urbansprout_token');
+    if (!token) {
+      // console.log('🔔 No token available, skipping unread count fetch');
       return;
     }
 

@@ -1,4 +1,10 @@
-const API_BASE_URL = 'http://localhost:5002/api';
+// Prefer env-configured API base, otherwise default to same host on port 5001.
+// This avoids malformed URLs like ":5001/..." when hostname resolution is odd.
+const API_BASE_URL =
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) ||
+  (typeof window !== 'undefined'
+    ? `${window.location.protocol}//${window.location.hostname}:5001/api`
+    : 'http://localhost:5001/api');
 
 // API utility function
 export const apiCall = async (endpoint, options = {}) => {
@@ -30,13 +36,17 @@ export const apiCall = async (endpoint, options = {}) => {
     if (!response.ok) {
       // Handle authentication errors
       if (response.status === 401) {
-        // Clear invalid token
-        localStorage.removeItem('urbansprout_token');
-        localStorage.removeItem('urbansprout_user');
-        
-        // Redirect to login if it's a user not found error
-        if (data.code === 'USER_NOT_FOUND') {
-          window.location.href = '/login';
+        // Only clear tokens if we actually had one (to avoid clearing during initial load)
+        const existingToken = localStorage.getItem('urbansprout_token');
+        if (existingToken) {
+          // Check if it's a user not found error (only then redirect)
+          if (data.code === 'USER_NOT_FOUND') {
+            localStorage.removeItem('urbansprout_token');
+            localStorage.removeItem('urbansprout_user');
+            window.location.href = '/login';
+          }
+          // If it's just an expired token, don't clear it everywhere to avoid cascading failures
+          // Let individual components handle it
         }
       }
       throw new Error(data.message || 'Something went wrong');
@@ -116,6 +126,126 @@ export const authAPI = {
       method: 'POST',
       body: JSON.stringify(resetData),
     }),
+};
+
+// Vendor API functions
+export const vendorAPI = {
+  // Storefront
+  getMyStorefront: (page = 1, limit = 20) =>
+    apiCall(`/vendor/store/me?page=${page}&limit=${limit}`),
+
+  getPublicStorefront: (vendorId) =>
+    apiCall(`/vendor/store/${vendorId}`),
+
+  getPayUri: (vendorId, amount) =>
+    apiCall(`/vendor/store/${vendorId}/pay-uri?amount=${encodeURIComponent(amount)}`),
+
+  /** Public: list vendors with published products (for store directory) */
+  getList: () => apiCall('/vendor/list'),
+
+  // Products
+  getProducts: (page = 1, limit = 20) =>
+    apiCall(`/vendor/products?page=${page}&limit=${limit}`),
+
+  createProduct: (productData) =>
+    apiCall('/vendor/products', {
+      method: 'POST',
+      body: JSON.stringify(productData),
+    }),
+
+  updateProduct: (productId, productData) =>
+    apiCall(`/vendor/products/${productId}`, {
+      method: 'PUT',
+      body: JSON.stringify(productData),
+    }),
+
+  toggleProductAvailability: (productId) =>
+    apiCall(`/vendor/products/${productId}/toggle`, {
+      method: 'PATCH',
+    }),
+
+  deleteProduct: (productId) =>
+    apiCall(`/vendor/products/${productId}`, {
+      method: 'DELETE',
+    }),
+
+  uploadImage: (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return apiCall('/vendor/upload', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+
+  /** Save storefront header URL (upload image first via uploadImage, then call this with the returned url) */
+  updateStorefrontHeader: (url) =>
+    apiCall('/vendor/storefront-header', {
+      method: 'PATCH',
+      body: JSON.stringify({ url }),
+    }),
+
+  // Dashboard (real stats)
+  getDashboardStats: () => apiCall('/vendor/dashboard-stats'),
+
+  // Orders
+  getOrders: (statusGroup = 'new') =>
+    apiCall(`/vendor/orders?statusGroup=${statusGroup}`),
+  updateOrderStatus: (vendorOrderId, status) =>
+    apiCall(`/vendor/orders/${vendorOrderId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    }),
+
+  // Reviews
+  getReviews: (page = 1, limit = 20) =>
+    apiCall(`/vendor/reviews?page=${page}&limit=${limit}`),
+
+  // Payout details (UPI via Razorpay X)
+  getPayoutDetails: () => apiCall('/vendor/payout-details'),
+  savePayoutDetails: (upi) =>
+    apiCall('/vendor/payout-details', {
+      method: 'POST',
+      body: JSON.stringify({ upi }),
+    }),
+
+  // Payouts
+  getPayoutSummary: () =>
+    apiCall('/vendor/payouts/summary'),
+
+  getPayoutTransactions: () =>
+    apiCall('/vendor/payouts/transactions'),
+
+  // Promos
+  createPromo: (promoData) =>
+    apiCall('/vendor/promos', {
+      method: 'POST',
+      body: JSON.stringify(promoData),
+    }),
+
+  getPromos: () =>
+    apiCall('/vendor/promos'),
+
+  /** Checkout from vendor storefront: items = [{ vendorProductId, quantity }], shippingAddress, paymentMethod */
+  vendorCheckout: (payload) =>
+    apiCall('/store/vendor-checkout', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+};
+
+// Courses API (expert: create courses, upload cover image)
+export const coursesAPI = {
+  uploadImage: (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return apiCall('/courses/upload', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+  /** Expert dashboard stats (real data) */
+  getExpertDashboardStats: () => apiCall('/courses/expert/dashboard-stats'),
 };
 
 export default apiCall;

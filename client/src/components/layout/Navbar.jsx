@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X, Leaf, User, LogOut, Shield, BarChart3, Users, Package, FileText, ShoppingBag, Cog } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useAuth } from '../../contexts/AuthContext'
-import NotificationIcon from '../NotificationIcon'
 import Logo from '../Logo'
 
 const Navbar = () => {
@@ -30,7 +29,7 @@ const Navbar = () => {
     const baseItems = [
       { name: 'Home', path: '/' },
       { name: 'Blog', path: '/blog' },
-      { name: 'Plant Suggestion', path: '/plant-suggestion', requiresAuth: true },
+      { name: 'My Course', path: '/my-courses', requiresAuth: true },
       { name: 'Store', path: '/store', requiresAuth: true },
       { name: 'Dashboard', path: '/dashboard', requiresAuth: true },
     ]
@@ -40,8 +39,37 @@ const Navbar = () => {
       return []
     }
 
+    let items = baseItems;
+
+    // Filter items based on role
+    if (user?.role === 'beginner') {
+      items = [
+        { name: 'Blog', path: '/blog' },
+        { name: 'Plant Suggestion', path: '/plant-suggestion', requiresAuth: true },
+        { name: 'Space Planner', path: '/space-planner', requiresAuth: true },
+        { name: 'Store', path: '/store', requiresAuth: true },
+        { name: 'Learn', path: '/learn', requiresAuth: true },
+        { name: 'Dashboard', path: '/dashboard', requiresAuth: true },
+      ];
+    } else if (user?.role === 'expert') {
+      items = [
+        { name: 'Blog', path: '/blog' },
+        { name: 'Space Planner', path: '/space-planner', requiresAuth: true },
+        { name: 'My Course', path: '/my-courses', requiresAuth: true },
+        { name: 'Store', path: '/store', requiresAuth: true },
+        { name: 'Dashboard', path: '/dashboard', requiresAuth: true },
+      ];
+    } else if (user?.role === 'vendor') {
+      items = [
+        { name: 'Blog', path: '/blog', requiresAuth: true },
+        { name: 'My Products', path: '/vendor/products', requiresAuth: true },
+        { name: 'Payout settings', path: '/vendor/payout-settings', requiresAuth: true },
+        { name: 'Dashboard', path: '/vendor/dashboard', requiresAuth: true },
+      ];
+    }
+
     // Hide Home when a user is logged in
-    return isAuthenticated ? baseItems.filter(item => item.name !== 'Home') : baseItems
+    return isAuthenticated ? items.filter(item => item.name !== 'Home') : items
   }
 
   const navItems = getNavItems()
@@ -100,15 +128,15 @@ const Navbar = () => {
   return (
     <nav className={cn(
       "fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out",
-      isScrolled 
-        ? "bg-white/80 backdrop-blur-xl shadow-lg border-b border-white/20" 
+      isScrolled
+        ? "bg-white/80 backdrop-blur-xl shadow-lg border-b border-white/20"
         : "bg-transparent"
     )}>
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
         <div className="flex justify-between items-center h-[82px]">
           {/* Logo */}
-          <Link 
-            to="/" 
+          <Link
+            to="/"
             className="flex items-center space-x-3 group"
             onDoubleClick={handleLogoClearData}
             title="Double-click to clear all data (development)"
@@ -122,7 +150,7 @@ const Navbar = () => {
                 <Logo size="xl" className="w-full h-full object-cover" />
               </div>
             </motion.div>
-            <motion.span 
+            <motion.span
               className="text-2xl font-bold bg-gradient-to-r from-forest-green-600 to-forest-green-800 bg-clip-text text-transparent"
               whileHover={{ scale: 1.02 }}
               transition={{ duration: 0.2 }}
@@ -162,7 +190,7 @@ const Navbar = () => {
                 />
               </motion.button>
             ))}
-            
+
             {/* Admin Panel Button - Only for admin users */}
             {user?.role === 'admin' && (
               <div className="flex items-center space-x-2 ml-4 pl-4 border-l border-gray-200/50">
@@ -180,7 +208,7 @@ const Navbar = () => {
                   <Shield className="h-4 w-4" />
                   <span>Admin Panel</span>
                 </motion.button>
-                
+
                 {/* Admin Dashboard Button - Only for admin users */}
                 <motion.button
                   onClick={() => handleAdminPanelClick('/admin')}
@@ -198,16 +226,11 @@ const Navbar = () => {
                 </motion.button>
               </div>
             )}
-            
+
             {/* Auth Section */}
             <div className="flex items-center space-x-3 ml-4 pl-4 border-l border-gray-200/50">
               {isAuthenticated ? (
                 <>
-                  {/* Notification Icon */}
-                  <div className="relative">
-                    <NotificationIcon />
-                  </div>
-                  
                   <div className="relative">
                     <motion.button
                       onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -219,7 +242,7 @@ const Navbar = () => {
                         <div className="relative">
                           <div className="absolute inset-0 bg-gradient-to-br from-forest-green-400 to-forest-green-600 rounded-full blur-sm opacity-60 group-hover:opacity-80 transition-opacity duration-300"></div>
                           <img
-                            src={user.avatar.startsWith('/api/profile-photo/') ? `http://localhost:5002${user.avatar}` : user.avatar}
+                            src={user.avatar.startsWith('/api/profile-photo/') ? `http://localhost:5001${user.avatar}` : user.avatar}
                             alt={user.name}
                             className="relative w-10 h-10 rounded-full border-2 border-white/50 shadow-lg object-cover"
                           />
@@ -239,7 +262,7 @@ const Navbar = () => {
                         </div>
                       </div>
                     </motion.button>
-                  
+
                     <AnimatePresence>
                       {userMenuOpen && (
                         <motion.div
@@ -337,7 +360,7 @@ const Navbar = () => {
                     {item.name}
                   </motion.button>
                 ))}
-            
+
                 {/* Admin Dashboard Button for Mobile - Only for admin users */}
                 {user?.role === 'admin' && (
                   <div className="pt-4 border-t border-gray-200/50">
@@ -360,7 +383,7 @@ const Navbar = () => {
                     </motion.button>
                   </div>
                 )}
-            
+
                 {/* Admin Panel Section for Mobile - Only for admin users */}
                 {user?.role === 'admin' && (
                   <div className="pt-4 border-t border-gray-200/50">
@@ -459,7 +482,7 @@ const Navbar = () => {
                     </div>
                   </div>
                 )}
-            
+
                 <div className={navItems.length > 0 ? "pt-4 space-y-3 border-t border-gray-200/50" : "space-y-3"}>
                   {isAuthenticated ? (
                     <>
@@ -467,7 +490,7 @@ const Navbar = () => {
                         <div className="flex items-center space-x-3">
                           {user.avatar ? (
                             <img
-                              src={user.avatar.startsWith('/api/profile-photo/') ? `http://localhost:5002${user.avatar}` : user.avatar}
+                              src={user.avatar.startsWith('/api/profile-photo/') ? `http://localhost:5001${user.avatar}` : user.avatar}
                               alt={user.name}
                               className="w-10 h-10 rounded-full border-2 border-white/50 shadow-lg object-cover"
                             />

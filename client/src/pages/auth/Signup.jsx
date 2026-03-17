@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Eye, 
@@ -14,7 +14,8 @@ import {
   Sparkles,
   Heart,
   Zap,
-  User
+  User,
+  ArrowLeft
 } from 'lucide-react';
 import { signInWithGoogle } from '../../config/firebase';
 import { authAPI } from '../../utils/api';
@@ -25,13 +26,22 @@ import Logo from '../../components/Logo';
 const Signup = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const [searchParams] = useSearchParams();
+  const role = searchParams.get('role') || 'beginner';
+  
+  // Redirect to role selection if role is invalid
+  useEffect(() => {
+    const validRoles = ['beginner', 'expert', 'vendor'];
+    if (!validRoles.includes(role)) {
+      navigate('/signup');
+    }
+  }, [role, navigate]);
   
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
-    confirmPassword: '',
-    professionalId: ''
+    confirmPassword: ''
   });
   
   const [showPassword, setShowPassword] = useState(false);
@@ -61,7 +71,7 @@ const Signup = () => {
     setEmailValidation(prev => ({ ...prev, isChecking: true }));
 
     try {
-      const API_BASE_URL = 'http://localhost:5002/api';
+      const API_BASE_URL = 'http://localhost:5001/api';
       const response = await fetch(`${API_BASE_URL}/auth/check-email`, {
         method: 'POST',
         headers: {
@@ -124,7 +134,7 @@ const Signup = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
     
     // Real-time validation messages
-    const message = getValidationMessage(name, value, 'beginner');
+    const message = getValidationMessage(name, value, role);
     setFieldMessages(prev => ({ ...prev, [name]: message }));
     
     // Clear general error
@@ -134,7 +144,7 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    const validation = validateForm(formData, 'beginner');
+    const validation = validateForm(formData, role);
     if (!validation.isValid) {
       setError('Please fix the errors below');
       return;
@@ -146,7 +156,7 @@ const Signup = () => {
     try {
       const userData = {
         ...formData,
-        role: 'beginner'
+        role: role
       };
       
       const response = await authAPI.register(userData);
@@ -170,14 +180,14 @@ const Signup = () => {
       const result = await signInWithGoogle();
       const user = result.user;
       
-      // Send Google user data to backend with beginner role
+      // Send Google user data to backend with selected role
       const googleData = {
         uid: user.uid,
         email: user.email,
         name: user.displayName,
         photoURL: user.photoURL,
         emailVerified: user.emailVerified,
-        role: 'beginner'
+        role: role
       };
       
       const response = await authAPI.googleSignIn(googleData);
@@ -238,7 +248,7 @@ const Signup = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
           >
-            <p className="text-sm text-forest-green-600">Start your gardening journey with us</p>
+            <p className="text-sm text-forest-green-600">Create your {role} account</p>
           </motion.div>
         </div>
 
@@ -486,6 +496,18 @@ const Signup = () => {
                   </motion.p>
               )}
             </div>
+          </div>
+
+          {/* Back Button */}
+          <div className="flex justify-start">
+            <button
+              type="button"
+              onClick={() => navigate('/signup')}
+              className="flex items-center text-sm text-forest-green-600 hover:text-forest-green-700 transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to role selection
+            </button>
           </div>
 
           {/* Submit Button */}

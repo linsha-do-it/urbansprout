@@ -94,6 +94,17 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  // Content policy / moderation fields
+  violationCount: {
+    // Total number of content-policy violations recorded for this user
+    type: Number,
+    default: 0
+  },
+  postingDisabledUntil: {
+    // If set, user cannot create new blog posts until this time
+    type: Date,
+    default: null
+  },
   avatar: {
     type: String,
     default: null
@@ -129,20 +140,28 @@ const userSchema = new mongoose.Schema({
     }
   },
 
+  savedCourses: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course'
+  }],
+  completedLessons: [{
+    type: String
+  }],
   resetPasswordToken: String,
   resetPasswordExpire: Date,
   emailVerificationToken: String,
   emailVerificationExpire: Date
 }, {
-  timestamps: true
+  timestamps: true,
+  collection: 'users'  // Admins and legacy users; role-specific users use beginnerusers, expertusers, vendorusers
 });
 
 // Hash password before saving
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
     return next();
   }
-  
+
   try {
     const salt = await bcrypt.genSalt(12);
     this.password = await bcrypt.hash(this.password, salt);
@@ -153,12 +172,12 @@ userSchema.pre('save', async function(next) {
 });
 
 // Compare password method
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
 // Get user without password
-userSchema.methods.toJSON = function() {
+userSchema.methods.toJSON = function () {
   const userObject = this.toObject();
   delete userObject.password;
   delete userObject.resetPasswordToken;

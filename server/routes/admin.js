@@ -21,6 +21,7 @@ const {
   approveBlogPost,
   rejectBlogPost,
   deleteBlogPost,
+  warnUserForBlog,
   toggleCommentApproval,
   // Product management
   getAllProducts,
@@ -62,7 +63,8 @@ const {
   updatePlantSuggestion,
   deletePlantSuggestion,
   togglePlantSuggestionStatus,
-  getPlantSuggestionStats
+  getPlantSuggestionStats,
+  getRevenuePrediction
 } = require('../controllers/adminController');
 const { protect, admin } = require('../middlewares/auth');
 const { 
@@ -145,6 +147,7 @@ router.post('/orders/send-notification', trackAdminActivity('order_updated', 'Se
 router.get('/blog', validatePagination, getAllBlogPosts);
 router.put('/blog/:id/approve', validateObjectId, trackAdminActivity('blog_approved', (req) => `Approved blog post "${req.params.id}"`), approveBlogPost);
 router.put('/blog/:id/reject', validateObjectId, trackAdminActivity('blog_rejected', (req) => `Rejected blog post "${req.params.id}"`), rejectBlogPost);
+router.put('/blog/:id/warn', validateObjectId, trackAdminActivity('blog_warned', (req) => `Warned user for blog "${req.params.id}"`), warnUserForBlog);
 router.delete('/blog/:id', validateObjectId, trackAdminActivity('blog_deleted', (req) => `Deleted blog post "${req.params.id}"`), deleteBlogPost);
 router.put('/blog/:id/comments/:commentId/approve', validateObjectId, toggleCommentApproval);
 
@@ -186,6 +189,9 @@ router.put('/products/bulk', trackAdminActivity('product_updated', 'Performed bu
 
 // Notifications
 router.get('/notifications', getNotifications);
+
+// Revenue Prediction
+router.get('/revenue-prediction', getRevenuePrediction);
 
 // Plant Suggestions Management
 router.get('/plant-suggestions', validatePagination, getAllPlantSuggestions);

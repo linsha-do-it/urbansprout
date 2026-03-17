@@ -180,6 +180,32 @@ const PlantChatbot = ({ onClose, user }) => {
     }
   }
 
+  const savePlantToLocalGarden = (plant) => {
+    try {
+      const storageKeyBase = user?.id || user?.uid || user?.email || 'guest';
+      const listKey = `my_garden_${storageKeyBase}`;
+      const imageKey = `plant_images_${storageKeyBase}`;
+
+      const existing = JSON.parse(localStorage.getItem(listKey) || '[]');
+      if (existing.includes(plant.name)) {
+        alert(`${plant.name} is already in your garden!`);
+        return;
+      }
+
+      const updated = [...existing, plant.name];
+      localStorage.setItem(listKey, JSON.stringify(updated));
+
+      const existingImages = JSON.parse(localStorage.getItem(imageKey) || '{}');
+      existingImages[plant.name] = plant.image || '/api/placeholder/300/200';
+      localStorage.setItem(imageKey, JSON.stringify(existingImages));
+
+      alert(`Added ${plant.name} to your garden! 🌱 (Saved locally)`);
+    } catch (localError) {
+      console.error('Local storage fallback failed:', localError);
+      alert('Failed to add plant to garden. Please try again.');
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <motion.div
@@ -288,27 +314,32 @@ const PlantChatbot = ({ onClose, user }) => {
                               
                               <div className="mt-2">
                                 <button
-                                  onClick={() => {
-                                    // Add to user's garden
+                                  onClick={async () => {
+                                    const hasAuthToken = Boolean(localStorage.getItem('urbansprout_token'));
+
+                                    // For guests or when offline, use local-only storage immediately
+                                    if (!hasAuthToken || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+                                      savePlantToLocalGarden(plant);
+                                      return;
+                                    }
+
                                     try {
-                                      const key = `my_garden_${user?.id || user?.uid || user?.email || 'guest'}`
-                                      const existing = JSON.parse(localStorage.getItem(key) || '[]')
-                                      if (!existing.includes(plant.name)) {
-                                        const updated = [...existing, plant.name]
-                                        localStorage.setItem(key, JSON.stringify(updated))
-                                        
-                                        // Also save plant image
-                                        const imageKey = `plant_images_${user?.id || user?.uid || user?.email || 'guest'}`
-                                        const existingImages = JSON.parse(localStorage.getItem(imageKey) || '{}')
-                                        existingImages[plant.name] = plant.image || '/api/placeholder/300/200'
-                                        localStorage.setItem(imageKey, JSON.stringify(existingImages))
-                                        
-                                        alert(`Added ${plant.name} to your garden! 🌱`)
+                                      const { apiCall } = await import('../utils/api');
+                                      const response = await apiCall('/garden/add', {
+                                        method: 'POST',
+                                        body: JSON.stringify({ plant })
+                                      });
+
+                                      if (response.success) {
+                                        alert(`Added ${plant.name} to your garden! 🌱`);
                                       } else {
-                                        alert(`${plant.name} is already in your garden!`)
+                                        // If API reports a failure, still ensure local save
+                                        savePlantToLocalGarden(plant);
                                       }
-                                    } catch (e) {
-                                      console.error('Failed to save to garden', e)
+                                    } catch (error) {
+                                      console.error('Failed to add to garden via API:', error);
+                                      // Fallback to local storage if API call fails for any reason
+                                      savePlantToLocalGarden(plant);
                                     }
                                   }}
                                   className="px-3 py-1 bg-green-500 text-white text-xs rounded-full hover:bg-green-600 transition-colors"

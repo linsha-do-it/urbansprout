@@ -21,7 +21,7 @@ const PlantChatbotEmbedded = ({ onClose, user }) => {
     const welcomeMessage = {
       id: Date.now(),
       type: 'bot',
-      content: "Hi there! I'm Sprouty, your friendly garden buddy! I'm super excited to help you grow amazing vegetables and fruits in any space you have! I specialize in hybrid varieties, container gardening, and fast-growing plants that don't need much room. Whether you want dwarf fruit trees, compact vegetables, or quick-harvest greens, I'll help you succeed! What delicious plants would you like to grow together?",
+      content: "Hi there! I'm Sprouty 🍍, your friendly garden buddy! I'm super excited to help you grow amazing vegetables and fruits in any space you have! I specialize in hybrid varieties, container gardening, and fast-growing plants that don't need much room. Whether you want dwarf fruit trees, compact vegetables, or quick-harvest greens, I'll help you succeed! What delicious plants would you like to grow together?",
       timestamp: new Date(),
       buttons: [
         "I'm a beginner, help me start",
@@ -226,6 +226,32 @@ const PlantChatbotEmbedded = ({ onClose, user }) => {
     }
   }
 
+  const savePlantToLocalGarden = (plant) => {
+    try {
+      const storageKeyBase = user?.id || user?.uid || user?.email || 'guest';
+      const listKey = `my_garden_${storageKeyBase}`;
+      const imageKey = `plant_images_${storageKeyBase}`;
+
+      const existing = JSON.parse(localStorage.getItem(listKey) || '[]');
+      if (existing.includes(plant.name)) {
+        alert(`${plant.name} is already in your garden!`);
+        return;
+      }
+
+      const updated = [...existing, plant.name];
+      localStorage.setItem(listKey, JSON.stringify(updated));
+
+      const existingImages = JSON.parse(localStorage.getItem(imageKey) || '{}');
+      existingImages[plant.name] = plant.image || '/api/placeholder/300/200';
+      localStorage.setItem(imageKey, JSON.stringify(existingImages));
+
+      alert(`Added ${plant.name} to your garden! 🌱 (Saved locally)`);
+    } catch (localError) {
+      console.error('Local storage fallback failed:', localError);
+      alert('Failed to add plant to garden. Please try again.');
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Messages */}
@@ -311,27 +337,32 @@ const PlantChatbotEmbedded = ({ onClose, user }) => {
                             
                             <div className="mt-2">
                               <button
-                                onClick={() => {
-                                  // Add to user's garden
+                                onClick={async () => {
+                                  const hasAuthToken = Boolean(localStorage.getItem('urbansprout_token'));
+
+                                  // For guests or when offline, use local-only storage immediately
+                                  if (!hasAuthToken || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+                                    savePlantToLocalGarden(plant);
+                                    return;
+                                  }
+
                                   try {
-                                    const key = `my_garden_${user?.id || user?.uid || user?.email || 'guest'}`
-                                    const existing = JSON.parse(localStorage.getItem(key) || '[]')
-                                    if (!existing.includes(plant.name)) {
-                                      const updated = [...existing, plant.name]
-                                      localStorage.setItem(key, JSON.stringify(updated))
-                                      
-                                      // Also save plant image
-                                      const imageKey = `plant_images_${user?.id || user?.uid || user?.email || 'guest'}`
-                                      const existingImages = JSON.parse(localStorage.getItem(imageKey) || '{}')
-                                      existingImages[plant.name] = plant.image || '/api/placeholder/300/200'
-                                      localStorage.setItem(imageKey, JSON.stringify(existingImages))
-                                      
-                                      alert(`Added ${plant.name} to your garden! 🌱`)
+                                    const { apiCall } = await import('../utils/api');
+                                    const response = await apiCall('/garden/add', {
+                                      method: 'POST',
+                                      body: JSON.stringify({ plant })
+                                    });
+
+                                    if (response.success) {
+                                      alert(`Added ${plant.name} to your garden! 🌱`);
                                     } else {
-                                      alert(`${plant.name} is already in your garden!`)
+                                      // If API reports a failure, still ensure local save
+                                      savePlantToLocalGarden(plant);
                                     }
-                                  } catch (e) {
-                                    console.error('Failed to save to garden', e)
+                                  } catch (error) {
+                                    console.error('Failed to add to garden via API:', error);
+                                    // Fallback to local storage if API call fails for any reason
+                                    savePlantToLocalGarden(plant);
                                   }
                                 }}
                                 className="px-3 py-1 bg-green-500 text-white text-xs rounded-full hover:bg-green-600 transition-colors"

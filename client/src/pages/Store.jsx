@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSearchParams, Link } from 'react-router-dom'
-import { Search, Filter, Heart, ShoppingCart, Star, Grid, List, X, MapPin, CreditCard, Package, Truck, Trash2 } from 'lucide-react'
+import { Search, Filter, Heart, ShoppingCart, Star, Grid, List, X, MapPin, CreditCard, Package, Truck, Trash2, Store as StoreIcon, ChevronRight } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { apiCall } from '../utils/api'
+import { apiCall, vendorAPI } from '../utils/api'
 import { initializeRazorpayPayment } from '../config/razorpay'
 import ProductImageSlideshow from '../components/ProductImageSlideshow'
 import Logo from '../components/Logo'
@@ -44,6 +44,8 @@ const Store = () => {
   const [paymentMethod, setPaymentMethod] = useState('cod')
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
   const [showOrderSummary, setShowOrderSummary] = useState(false)
+  const [vendors, setVendors] = useState([])
+  const [vendorsLoading, setVendorsLoading] = useState(true)
 
   // Ensure products are unique by ID
   const ensureUniqueProducts = (productList) => {
@@ -56,12 +58,9 @@ const Store = () => {
     return uniqueProducts
   }
 
-  // Clear any cached data
-  const clearCache = () => {
-    // Clear any potential localStorage cache
-    localStorage.removeItem('store_products_cache')
-    localStorage.removeItem('store_categories_cache')
-  }
+  // Local cache keys for faster revisit
+  const PRODUCTS_CACHE_KEY = 'store_products_cache_v1'
+  const CATEGORIES_CACHE_KEY = 'store_categories_cache_v1'
 
   // Load products from API with pagination
   const loadProducts = async (page = 1, reset = false) => {
@@ -75,7 +74,9 @@ const Store = () => {
       
       const categoryParam = selectedCategory && selectedCategory !== 'all' ? `&category=${encodeURIComponent(selectedCategory)}` : ''
       const timestamp = Date.now() // Cache busting
-      const apiUrl = `/store?page=${page}&limit=12${categoryParam}&_t=${timestamp}`
+      // Use a smaller limit for the first page to speed up initial load
+      const effectiveLimit = page === 1 ? 8 : 12
+      const apiUrl = `/store?page=${page}&limit=${effectiveLimit}${categoryParam}&_t=${timestamp}`
       const response = await apiCall(apiUrl)
       
       if (response.success && response.data && response.data.products) {
@@ -89,6 +90,16 @@ const Store = () => {
             const uniqueCombinedProducts = ensureUniqueProducts(combinedProducts)
             return uniqueCombinedProducts
           })
+        }
+
+        // Cache last fetched page for faster revisit
+        try {
+          localStorage.setItem(
+            PRODUCTS_CACHE_KEY,
+            JSON.stringify({ products: uniqueNewProducts, timestamp: Date.now() })
+          )
+        } catch (e) {
+          console.warn('Failed to cache products', e)
         }
         
         // Check if there are more products
@@ -128,37 +139,40 @@ const Store = () => {
     loadProducts(1, true)
   }
 
-  // Load categories from API
+  // Load categories (prefer deriving from products and local cache)
   const loadCategories = async () => {
     try {
-      const timestamp = Date.now() // Cache busting
-      const response = await apiCall(`/store/categories?_t=${timestamp}`)
-      
-      if (response.success && response.data && response.data.categories) {
-        // Format categories for the store page
-        const formattedCategories = response.data.categories.map(cat => ({
-          id: cat._id,
-          name: cat._id
-        }))
-        
-        // Add "All Products" option at the beginning
-        const allCategories = [
-          { id: 'all', name: 'All Products' },
-          ...formattedCategories
-        ]
-        
-        setCategories(allCategories)
-      } else {
-        // Fallback: extract categories from products
-        const uniqueCategories = [...new Set(products.map(product => product.category))].filter(cat => cat)
-        const fallbackCategories = [
-          { id: 'all', name: 'All Products' },
-          ...uniqueCategories.map(cat => ({
-            id: cat,
-            name: cat
-          }))
-        ]
-        setCategories(fallbackCategories)
+      // Try cached categories first
+      if (categories.length === 0) {
+        const cachedRaw = localStorage.getItem(CATEGORIES_CACHE_KEY)
+        if (cachedRaw) {
+          try {
+            const cached = JSON.parse(cachedRaw)
+            if (Array.isArray(cached.categories)) {
+              setCategories(cached.categories)
+            }
+          } catch (e) {
+            console.warn('Failed to parse cached categories', e)
+          }
+        }
+      }
+
+      // Derive from currently loaded products
+      const uniqueCategories = [...new Set(products.map(product => product.category))].filter(Boolean)
+      const derivedCategories = [
+        { id: 'all', name: 'All Products' },
+        ...uniqueCategories.map(cat => ({ id: cat, name: cat }))
+      ]
+
+      setCategories(derivedCategories)
+
+      try {
+        localStorage.setItem(
+          CATEGORIES_CACHE_KEY,
+          JSON.stringify({ categories: derivedCategories, timestamp: Date.now() })
+        )
+      } catch (e) {
+        console.warn('Failed to cache categories', e)
       }
     } catch (error) {
       console.error('Error loading categories:', error)
@@ -175,12 +189,41 @@ const Store = () => {
     }
   }
 
+  // Load vendor list for "Shop from local growers" section
+  const loadVendors = async () => {
+    try {
+      setVendorsLoading(true)
+      const res = await vendorAPI.getList()
+      const list = res?.data?.vendors || []
+      setVendors(Array.isArray(list) ? list : [])
+    } catch (e) {
+      console.error('Failed to load vendors', e)
+      setVendors([])
+    } finally {
+      setVendorsLoading(false)
+    }
+  }
+
   // Load cart and wishlist from database on component mount
   useEffect(() => {
     const initializeData = async () => {
-      clearCache() // Clear any cached data first
+      // Hydrate from cache quickly if available
+      try {
+        const cachedProductsRaw = localStorage.getItem(PRODUCTS_CACHE_KEY)
+        if (cachedProductsRaw && products.length === 0) {
+          const cached = JSON.parse(cachedProductsRaw)
+          if (Array.isArray(cached.products) && cached.products.length > 0) {
+            setProducts(cached.products)
+            setLoading(false)
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to hydrate products from cache', e)
+      }
+
       await loadProducts(1, true)
       await loadCategories()
+      loadVendors()
       
       if (user) {
         // Load from database
@@ -422,15 +465,29 @@ const Store = () => {
     
     const productId = product._id || product.id;
     const existingItem = (cart || []).find(item => item.id === productId)
+    // Handle undefined/null stock - treat as available if not specified
+    const currentProductStock = (product.stock !== undefined && product.stock !== null) ? product.stock : Infinity;
+    
     let newCart
     
     if (existingItem) {
+      const newQuantity = existingItem.quantity + 1;
+      // Check if adding one more would exceed stock (only if stock is defined)
+      if (currentProductStock !== Infinity && newQuantity > currentProductStock) {
+        alert(`Cannot add more items. Only ${currentProductStock} items available in stock.`);
+        return;
+      }
       newCart = (cart || []).map(item => 
         item.id === productId 
-          ? { ...item, quantity: item.quantity + 1 }
+          ? { ...item, quantity: newQuantity }
           : item
       )
     } else {
+      // Check if product has stock (only if stock is defined and is 0 or less)
+      if (currentProductStock !== Infinity && currentProductStock <= 0) {
+        alert('This product is out of stock');
+        return;
+      }
       // Create a clean cart item with consistent structure
       const cartItem = {
         id: productId,
@@ -440,7 +497,7 @@ const Store = () => {
         image: product.images?.[0] || product.image,
         category: product.category,
         stock: product.stock,
-        inStock: product.stock > 0,
+        inStock: product.stock === undefined || product.stock === null || product.stock > 0,
         quantity: 1
       };
       newCart = [...cart, cartItem]
@@ -458,6 +515,15 @@ const Store = () => {
   }
 
   const updateQuantity = async (productId, quantity) => {
+    const item = (cart || []).find(i => i.id === productId);
+    const productStock = item?.stock || 0;
+    
+    // Validate quantity doesn't exceed stock
+    if (quantity > productStock) {
+      alert(`Cannot add more items. Only ${productStock} items available in stock.`);
+      return;
+    }
+    
     let newCart
     if (quantity <= 0) {
       newCart = (cart || []).filter(item => item.id !== productId)
@@ -848,7 +914,8 @@ const Store = () => {
       return
     }
 
-    if (product.stock <= 0) {
+    // Check stock only if it's defined
+    if (product.stock !== undefined && product.stock !== null && product.stock <= 0) {
       alert('This product is out of stock')
       return
     }
@@ -870,7 +937,8 @@ const Store = () => {
       return
     }
 
-    if (item.stock <= 0) {
+    // Check stock only if it's defined
+    if (item.stock !== undefined && item.stock !== null && item.stock <= 0) {
       alert('This product is out of stock')
       return
     }
@@ -911,8 +979,10 @@ const Store = () => {
       return
     }
 
-    // Filter out-of-stock items
-    const availableItems = wishlist.filter(item => item.stock > 0)
+    // Filter out-of-stock items - only exclude items with stock explicitly set to 0 or less
+    const availableItems = wishlist.filter(item => {
+      return item.stock === undefined || item.stock === null || item.stock > 0
+    })
     
     if (availableItems.length === 0) {
       alert('All items in your wishlist are out of stock')
@@ -1087,6 +1157,70 @@ const Store = () => {
         </motion.div>
       )}
 
+      {/* Shop from local growers / Buy from home vendors */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-2 relative z-10">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-forest-green-800 flex items-center gap-2">
+            <StoreIcon className="w-6 h-6 text-forest-green-600" />
+            Shop from local growers
+          </h2>
+        </div>
+        {vendorsLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-forest-green-500" />
+          </div>
+        ) : vendors.length > 0 ? (
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-forest-green-200 scrollbar-track-gray-100">
+            {vendors.map((vendor, index) => (
+              <Link
+                key={vendor.id}
+                to={`/vendors/${vendor.id}`}
+                className="flex-shrink-0 w-[200px] sm:w-[220px]"
+              >
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  className="bg-white rounded-xl border border-forest-green-100 shadow-md hover:shadow-lg hover:border-forest-green-200 transition-all duration-200 overflow-hidden group"
+                >
+                  <div className="aspect-square bg-forest-green-50 flex items-center justify-center overflow-hidden">
+                    {vendor.avatar ? (
+                      <img
+                        src={vendor.avatar}
+                        alt={vendor.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-full bg-forest-green-200 flex items-center justify-center text-forest-green-700 text-2xl font-semibold">
+                        {(vendor.name || 'V').charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <p className="font-semibold text-gray-900 truncate" title={vendor.name}>
+                      {vendor.name}
+                    </p>
+                    <div className="flex items-center justify-between mt-1 text-sm text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                        {vendor.rating > 0 ? vendor.rating.toFixed(1) : '—'}
+                      </span>
+                      <span>{vendor.productCount} products</span>
+                    </div>
+                    <p className="mt-2 text-xs font-medium text-forest-green-600 flex items-center gap-1 group-hover:gap-2 transition-all">
+                      Visit shop
+                      <ChevronRight className="w-4 h-4" />
+                    </p>
+                  </div>
+                </motion.div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500 py-4">No local vendors at the moment. Check back later.</p>
+        )}
+      </section>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar removed for cleaner layout */}
@@ -1157,9 +1291,39 @@ const Store = () => {
 
             {/* Products Grid */}
             {loading ? (
-              <div className="col-span-full flex justify-center items-center py-20">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
-                <p className="ml-4">Loading products...</p>
+              <div
+                className={`grid gap-4 ${
+                  viewMode === 'grid'
+                    ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+                    : 'grid-cols-1'
+                }`}
+              >
+                {Array.from({ length: viewMode === 'grid' ? 6 : 3 }).map((_, idx) => (
+                  <div
+                    key={idx}
+                    className={`bg-white/70 rounded-xl shadow-sm border border-white/40 overflow-hidden ${
+                      viewMode === 'list' ? 'flex' : 'flex flex-col'
+                    } animate-pulse`}
+                  >
+                    <div
+                      className={`bg-gray-200 ${
+                        viewMode === 'list' ? 'w-48 h-48' : 'h-56'
+                      }`}
+                    />
+                    <div className="p-4 flex-1 flex flex-col space-y-3">
+                      <div className="h-4 bg-gray-200 rounded w-3/4" />
+                      <div className="h-3 bg-gray-200 rounded w-1/2" />
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="h-4 bg-gray-200 rounded w-1/3" />
+                        <div className="h-3 bg-gray-200 rounded w-1/4" />
+                      </div>
+                      <div className="flex gap-2 pt-2 mt-auto">
+                        <div className="flex-1 h-8 bg-gray-200 rounded-lg" />
+                        <div className="flex-1 h-8 bg-gray-200 rounded-lg" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : filteredProducts.length === 0 ? (
               <div className="col-span-full flex flex-col justify-center items-center py-20">
@@ -1196,7 +1360,7 @@ const Store = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: index * 0.1 }}
                     className={`bg-white/80 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 group relative border border-white/20 cursor-pointer ${
-                      viewMode === 'list' ? 'flex' : 'flex flex-col h-[360px]'
+                      viewMode === 'list' ? 'flex' : 'flex flex-col'
                     } ${
                       highlightedProductId === product._id ? 'ring-4 ring-blue-500 ring-opacity-50 shadow-2xl' : ''
                     }`}
@@ -1298,39 +1462,30 @@ const Store = () => {
                     </div>
 
                     {/* Description - Compact */}
-                    <div className="mb-0.5 h-10 overflow-hidden">
-                      {product.description && (
-                        <p className="text-sm text-forest-green-500 leading-relaxed">
-                          {product.description}
-                        </p>
-                      )}
-                    </div>
+                    {product.description && (
+                      <p className="text-xs text-forest-green-500 mb-1 line-clamp-2">
+                        {product.description}
+                      </p>
+                    )}
 
                     {/* Features - Compact */}
-                    <div className="flex flex-wrap gap-1 mb-0.5 h-6 overflow-hidden">
-                      {(product.features || []).slice(0, 2).map((feature, idx) => (
-                        <span
-                          key={idx}
-                          className="px-1.5 py-0.5 bg-forest-green-100 text-forest-green-700 text-xs rounded"
-                        >
-                          {feature}
-                        </span>
-                      ))}
-                    </div>
+                    {(product.features || []).length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-1">
+                        {(product.features || []).slice(0, 2).map((feature, idx) => (
+                          <span
+                            key={idx}
+                            className="px-1.5 py-0.5 bg-forest-green-100 text-forest-green-700 text-xs rounded"
+                          >
+                            {feature}
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
-                    {/* Details - Compact */}
-                    <div className="mb-0.5 h-4">
-                      {product.size && (
-                        <div className="text-xs text-forest-green-600">
-                          <span className="font-medium">Size:</span> {product.size}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Price and Low Stock Warning */}
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center space-x-1">
-                        <span className="text-lg font-bold text-forest-green-800">
+                    {/* Price and Low Stock Warning - Always Visible */}
+                    <div className="flex items-center justify-between mb-2 mt-2">
+                      <div className="flex flex-wrap items-center gap-1">
+                        <span className="text-base font-bold text-forest-green-800">
                           ₹{(product.currentPrice || product.discountPrice || product.regularPrice || product.price || 0).toLocaleString()}
                         </span>
                         {(product.currentPrice || product.discountPrice) && product.regularPrice ? (
@@ -1351,30 +1506,57 @@ const Store = () => {
                     </div>
 
                     {/* Spacer to push button to bottom */}
-                    <div className="flex-grow"></div>
+                    <div className="flex-grow min-h-2"></div>
 
-                    {/* Add to Cart Button */}
-                    <div className="mt-auto">
+                    {/* Split Button - Add to Cart (Left) and Buy Now (Right) - Always Visible */}
+                    <div className="flex gap-2 pt-2">
+                      {/* Add to Cart Button - Left */}
                       <button
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
                           addToCart(product);
                         }}
-                        disabled={product.stock <= 0}
-                        className={`px-3 py-1.5 rounded-lg font-medium transition-colors w-full text-sm ${
-                          product.stock > 0
+                        disabled={product.stock !== undefined && product.stock !== null && product.stock <= 0}
+                        className={`flex-1 px-3 py-2 rounded-lg font-semibold transition-colors text-xs ${
+                          (product.stock === undefined || product.stock === null || product.stock > 0)
                             ? 'bg-forest-green-500 text-cream-100 hover:bg-forest-green-600'
                             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         }`}
+                        title="Add to Cart"
                       >
-                        {product.stock > 0 ? (
-                          <div className="flex items-center justify-center">
-                            <ShoppingCart className="h-3 w-3 mr-1" />
-                            Add to Cart
-                          </div>
+                        {(product.stock === undefined || product.stock === null || product.stock > 0) ? (
+                          <span className="flex items-center justify-center gap-1">
+                            <ShoppingCart className="h-4 w-4" />
+                            <span>Cart</span>
+                          </span>
                         ) : (
-                          'Out of Stock'
+                          <span className="text-xs">Out of Stock</span>
+                        )}
+                      </button>
+
+                      {/* Buy Now Button - Right */}
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleBuyNow(product);
+                        }}
+                        disabled={product.stock !== undefined && product.stock !== null && product.stock <= 0}
+                        className={`flex-1 px-3 py-2 rounded-lg font-semibold transition-colors text-xs border-2 ${
+                          (product.stock === undefined || product.stock === null || product.stock > 0)
+                            ? 'border-forest-green-600 text-forest-green-600 hover:bg-forest-green-50'
+                            : 'border-gray-300 text-gray-500 cursor-not-allowed'
+                        }`}
+                        title="Buy Now"
+                      >
+                        {(product.stock === undefined || product.stock === null || product.stock > 0) ? (
+                          <span className="flex items-center justify-center gap-1">
+                            <Package className="h-4 w-4" />
+                            <span>Buy</span>
+                          </span>
+                        ) : (
+                          <span className="text-xs">Unavailable</span>
                         )}
                       </button>
                     </div>

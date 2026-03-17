@@ -71,6 +71,7 @@ const AdminDashboard = () => {
     { id: 'orders', name: 'Orders', icon: ShoppingBag, color: 'purple' },
     { id: 'blog', name: 'Blog Posts', icon: FileText, color: 'orange' },
     { id: 'analytics', name: 'Analytics', icon: BarChart3, color: 'indigo' },
+    { id: 'inventory-insights', name: 'Inventory Insights', icon: Activity, color: 'teal', external: true, path: '/admin/inventory-insights' },
     { id: 'settings', name: 'Settings', icon: Shield, color: 'gray' }
   ];
 
@@ -270,7 +271,8 @@ const AdminDashboard = () => {
       purple: 'bg-purple-500 text-white',
       orange: 'bg-orange-500 text-white',
       indigo: 'bg-indigo-500 text-white',
-      gray: 'bg-gray-500 text-white'
+      gray: 'bg-gray-500 text-white',
+      teal: 'bg-teal-500 text-white'
     };
     return colors[color] || colors.gray;
   };
@@ -278,9 +280,9 @@ const AdminDashboard = () => {
   const renderDashboardOverview = () => (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-red-500 to-pink-600 rounded-lg p-6 text-white">
+      <div className="bg-gradient-to-r from-amber-800 to-amber-900 rounded-lg p-6 text-white">
         <h2 className="text-2xl font-bold mb-2">Admin Dashboard 👑</h2>
-        <p className="text-red-100">
+        <p className="text-amber-100">
           Welcome back, {user?.name}! Manage the UrbanSprout platform and monitor system performance.
         </p>
       </div>
@@ -311,10 +313,16 @@ const AdminDashboard = () => {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {navigationItems.slice(0, 4).map((item) => (
+          {navigationItems.slice(0, 6).map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveView(item.id)}
+              onClick={() => {
+                if (item.external && item.path) {
+                  window.location.href = item.path;
+                } else {
+                  setActiveView(item.id);
+                }
+              }}
               className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <div className={`p-3 rounded-lg ${getColorClasses(item.color)} mb-2`}>
@@ -615,7 +623,13 @@ const AdminDashboard = () => {
                 {navigationItems.map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => setActiveView(item.id)}
+                    onClick={() => {
+                      if (item.external && item.path) {
+                        window.location.href = item.path;
+                      } else {
+                        setActiveView(item.id);
+                      }
+                    }}
                     className={`${
                       activeView === item.id
                         ? 'bg-red-100 text-red-900'
@@ -661,7 +675,13 @@ const AdminDashboard = () => {
               {navigationItems.slice(0, 3).map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => setActiveView(item.id)}
+                  onClick={() => {
+                    if (item.external && item.path) {
+                      window.location.href = item.path;
+                    } else {
+                      setActiveView(item.id);
+                    }
+                  }}
                   className={`px-3 py-1 text-sm rounded-md ${
                     activeView === item.id
                       ? 'bg-red-100 text-red-700'

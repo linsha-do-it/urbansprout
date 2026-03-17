@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }) => {
           
           // Validate token by making a test API call
           try {
-            const response = await fetch(`http://localhost:5002/api/auth/profile`, {
+            const response = await fetch(`http://localhost:5001/api/auth/profile`, {
               headers: {
                 'Authorization': `Bearer ${savedToken}`,
                 'Content-Type': 'application/json'
