@@ -50,6 +50,11 @@ const courseSchema = new mongoose.Schema({
         required: true
     },
     lessons: [lessonSchema],
+    // If true, completing the course is intended to grant a certificate (UI/feature layer).
+    isCertificateCourse: {
+        type: Boolean,
+        default: false
+    },
     isPublished: {
         type: Boolean,
         default: true

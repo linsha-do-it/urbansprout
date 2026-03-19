@@ -364,33 +364,54 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Account Stats */}
-        <div className="mt-8 bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h2>
-          <div className={`grid grid-cols-1 gap-4 ${user?.role === 'admin' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
-            {user?.role !== 'admin' && (
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">
-                  {JSON.parse(localStorage.getItem(`my_garden_${user?.id || user?.uid || user?.email || 'guest'}`) || '[]').length}
+        {/* Account Stats & Badges */}
+        <div className="mt-8 space-y-4">
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h2>
+            <div className={`grid grid-cols-1 gap-4 ${user?.role === 'admin' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
+              {user?.role !== 'admin' && (
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">
+                    {JSON.parse(localStorage.getItem(`my_garden_${user?.id || user?.uid || user?.email || 'guest'}`) || '[]').length}
+                  </div>
+                  <div className="text-sm text-gray-600">Plants in Garden</div>
                 </div>
-                <div className="text-sm text-gray-600">Plants in Garden</div>
+              )}
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">
+                  {user?.role === 'beginner' ? 'Beginner' : 
+                   user?.role === 'expert' ? 'Expert' : 
+                   user?.role === 'vendor' ? 'Vendor' : 'Admin'}
+                </div>
+                <div className="text-sm text-gray-600">Account Type</div>
               </div>
-            )}
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">
-                {user?.role === 'beginner' ? 'Beginner' : 
-                 user?.role === 'expert' ? 'Expert' : 
-                 user?.role === 'vendor' ? 'Vendor' : 'Admin'}
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-purple-600">
+                  {new Date(user?.metadata?.creationTime || Date.now()).toLocaleDateString()}
+                </div>
+                <div className="text-sm text-gray-600">Member Since</div>
               </div>
-              <div className="text-sm text-gray-600">Account Type</div>
-            </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">
-                {new Date(user?.metadata?.creationTime || Date.now()).toLocaleDateString()}
-              </div>
-              <div className="text-sm text-gray-600">Member Since</div>
             </div>
           </div>
+
+          {Array.isArray(user?.badges) && user.badges.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Skill Badges</h2>
+              <p className="text-xs text-gray-500 mb-3">
+                These badges are earned by passing quizzes for different levels and areas.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {user.badges.map((badge) => (
+                  <span
+                    key={badge.key}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-forest-green-50 text-forest-green-800 border border-forest-green-100"
+                  >
+                    {badge.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>

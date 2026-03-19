@@ -92,7 +92,7 @@ const uploadCourseImage = asyncHandler(async (req, res, next) => {
 // @access  Private (Expert only)
 const createCourse = asyncHandler(async (req, res, next) => {
     requireExpert(req);
-    let { title, description, image } = req.body;
+    let { title, description, image, isCertificateCourse } = req.body;
 
     // If image is a URL (e.g. from upload), use as-is; otherwise try to get og:image from link
     if (image && !image.startsWith('http')) {
@@ -105,7 +105,8 @@ const createCourse = asyncHandler(async (req, res, next) => {
         image: image || '',
         instructor: req.user._id,
         instructorName: req.user.name,
-        lessons: []
+        lessons: [],
+        isCertificateCourse: Boolean(isCertificateCourse)
     });
 
     res.status(201).json({

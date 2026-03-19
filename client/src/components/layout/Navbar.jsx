@@ -47,14 +47,15 @@ const Navbar = () => {
         { name: 'Blog', path: '/blog' },
         { name: 'Plant Suggestion', path: '/plant-suggestion', requiresAuth: true },
         { name: 'Space Planner', path: '/space-planner', requiresAuth: true },
+        { name: 'Quizzes', path: '/quizzes', requiresAuth: true },
         { name: 'Store', path: '/store', requiresAuth: true },
         { name: 'Learn', path: '/learn', requiresAuth: true },
+        { name: 'Q&A', path: '/qa', requiresAuth: true },
         { name: 'Dashboard', path: '/dashboard', requiresAuth: true },
       ];
     } else if (user?.role === 'expert') {
       items = [
         { name: 'Blog', path: '/blog' },
-        { name: 'Space Planner', path: '/space-planner', requiresAuth: true },
         { name: 'My Course', path: '/my-courses', requiresAuth: true },
         { name: 'Store', path: '/store', requiresAuth: true },
         { name: 'Dashboard', path: '/dashboard', requiresAuth: true },

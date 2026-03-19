@@ -3,8 +3,12 @@ import { apiCall } from '../utils/api';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { FaSearch, FaBookmark, FaRegBookmark, FaPlay, FaClock, FaChalkboardTeacher, FaCheckCircle, FaTimes } from 'react-icons/fa';
+import { useAuth } from '../contexts/AuthContext';
+import { useLocation } from 'react-router-dom';
 
 const Learn = () => {
+    const { user } = useAuth();
+    const location = useLocation();
     const [activeTab, setActiveTab] = useState('explore');
     const [courses, setCourses] = useState([]);
     const [savedCourses, setSavedCourses] = useState([]);
@@ -14,12 +18,42 @@ const Learn = () => {
     const [selectedCourse, setSelectedCourse] = useState(null);
     const [completedLessons, setCompletedLessons] = useState([]);
     const [playingVideo, setPlayingVideo] = useState(null);
+    const [questionModal, setQuestionModal] = useState({ open: false, course: null, lesson: null });
+    const [questionText, setQuestionText] = useState('');
+    const [questionSubmitting, setQuestionSubmitting] = useState(false);
+    const [questionError, setQuestionError] = useState('');
+    const [myQuestions, setMyQuestions] = useState([]);
+    const [myQuestionsLoading, setMyQuestionsLoading] = useState(false);
+    const [myQuestionsError, setMyQuestionsError] = useState('');
+    const [courseCompleting, setCourseCompleting] = useState(false);
 
     useEffect(() => {
         fetchCourses();
         fetchSavedCourses();
         fetchUserProfile();
     }, []);
+
+    // Allow deep-linking into Q&A: /qa or /learn?tab=myquestions
+    useEffect(() => {
+        try {
+            const isQaRoute = location?.pathname === '/qa';
+            const params = new URLSearchParams(location?.search || '');
+            const tab = String(params.get('tab') || '').toLowerCase();
+            if (isQaRoute || tab === 'myquestions') {
+                setActiveTab('myquestions');
+            }
+        } catch {
+            // ignore
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location?.pathname, location?.search]);
+
+    useEffect(() => {
+        if (user?.role === 'beginner') {
+            fetchMyQuestions();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.role]);
 
     const fetchUserProfile = async () => {
         try {
@@ -56,6 +90,24 @@ const Learn = () => {
         }
     };
 
+    const fetchMyQuestions = async () => {
+        try {
+            setMyQuestionsLoading(true);
+            setMyQuestionsError('');
+            const response = await apiCall('/course-questions/my');
+            if (response.success) {
+                setMyQuestions(Array.isArray(response.data) ? response.data : []);
+            } else {
+                setMyQuestions([]);
+            }
+        } catch (e) {
+            setMyQuestionsError(e?.message || 'Failed to load your questions.');
+            setMyQuestions([]);
+        } finally {
+            setMyQuestionsLoading(false);
+        }
+    };
+
     const handleSaveToggle = async (e, course) => {
         e.stopPropagation();
         setSavingId(course._id);
@@ -84,6 +136,12 @@ const Learn = () => {
         course.description?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const isCourseCompleted = (course) => {
+        const lessons = course?.lessons || [];
+        if (!Array.isArray(lessons) || lessons.length === 0) return false;
+        return lessons.every((l) => l?._id && completedLessons.includes(l._id));
+    };
+
     const handleLessonToggle = async (e, lessonId) => {
         e.stopPropagation();
         try {
@@ -101,6 +159,81 @@ const Learn = () => {
     };
 
     const isLessonCompleted = (lessonId) => completedLessons.includes(lessonId);
+
+    const canAskQuestions = user?.role === 'beginner';
+
+    const openQuestionModal = (course, lesson) => {
+        setQuestionError('');
+        setQuestionText('');
+        setQuestionModal({ open: true, course, lesson });
+    };
+
+    const closeQuestionModal = () => {
+        setQuestionModal({ open: false, course: null, lesson: null });
+        setQuestionError('');
+        setQuestionText('');
+        setQuestionSubmitting(false);
+    };
+
+    const submitQuestion = async () => {
+        if (!questionModal.course?._id) return;
+        const text = String(questionText || '').trim();
+        if (!text) {
+            setQuestionError('Please type your question.');
+            return;
+        }
+        setQuestionSubmitting(true);
+        setQuestionError('');
+        try {
+            await apiCall('/course-questions', {
+                method: 'POST',
+                body: JSON.stringify({
+                    courseId: questionModal.course._id,
+                    lessonId: questionModal.lesson?._id,
+                    question: text
+                })
+            });
+            closeQuestionModal();
+            alert('Question sent to the expert!');
+            fetchMyQuestions();
+        } catch (e) {
+            setQuestionError(e?.message || 'Failed to send question.');
+        } finally {
+            setQuestionSubmitting(false);
+        }
+    };
+
+    const toggleCourseCompletion = async (course) => {
+        if (!course?._id) return;
+        const lessons = Array.isArray(course.lessons) ? course.lessons : [];
+        if (lessons.length === 0) return;
+
+        const targetCompleted = !isCourseCompleted(course);
+        setCourseCompleting(true);
+        try {
+            if (targetCompleted) {
+                for (const lesson of lessons) {
+                    if (!lesson?._id) continue;
+                    if (completedLessons.includes(lesson._id)) continue;
+                    // eslint-disable-next-line no-await-in-loop
+                    await apiCall(`/courses/lessons/${lesson._id}/complete`, { method: 'POST' });
+                    setCompletedLessons((prev) => (prev.includes(lesson._id) ? prev : [...prev, lesson._id]));
+                }
+            } else {
+                for (const lesson of lessons) {
+                    if (!lesson?._id) continue;
+                    if (!completedLessons.includes(lesson._id)) continue;
+                    // eslint-disable-next-line no-await-in-loop
+                    await apiCall(`/courses/lessons/${lesson._id}/complete`, { method: 'POST' });
+                    setCompletedLessons((prev) => prev.filter((id) => id !== lesson._id));
+                }
+            }
+        } catch (e) {
+            alert(e?.message || 'Failed to update course completion.');
+        } finally {
+            setCourseCompleting(false);
+        }
+    };
 
     const VideoPlayerModal = ({ lesson, onClose }) => {
         if (!lesson) return null;
@@ -162,6 +295,14 @@ const Learn = () => {
                     className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                {/* Completed Badge */}
+                {isCourseCompleted(course) && (
+                    <div className="absolute top-4 left-4 px-3 py-1.5 bg-white/90 backdrop-blur-md rounded-full text-forest-green-700 text-xs font-bold border border-white/60 flex items-center gap-2 z-10">
+                        <FaCheckCircle className="text-forest-green-600" />
+                        Completed
+                    </div>
+                )}
 
                 {/* Save Button */}
                 <button
@@ -228,6 +369,14 @@ const Learn = () => {
                         <div className="px-4 py-1.5 bg-white text-black rounded-full text-sm font-bold shadow-sm">
                             {course.lessons?.length || 0} {course.lessons?.length === 1 ? 'Project' : 'Projects'}
                         </div>
+                        <button
+                            type="button"
+                            onClick={() => toggleCourseCompletion(course)}
+                            disabled={courseCompleting || !course.lessons?.length}
+                            className="px-4 py-2 bg-white/20 backdrop-blur-md rounded-xl hover:bg-white/30 transition-all border border-white/30 text-sm font-semibold disabled:opacity-60"
+                        >
+                            {isCourseCompleted(course) ? 'Mark as incomplete' : 'Mark course complete'}
+                        </button>
                         <button
                             onClick={() => course.lessons?.length > 0 && setPlayingVideo(course.lessons[0])}
                             className="p-2.5 bg-white/20 backdrop-blur-md rounded-xl hover:bg-white/30 transition-all border border-white/30"
@@ -314,8 +463,22 @@ const Learn = () => {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="p-3 rounded-2xl bg-gray-50 text-gray-400 group-hover:bg-forest-green-50 group-hover:text-forest-green-600 transition-all">
-                                    <FaPlay className="text-sm" />
+                                <div className="flex items-center gap-3">
+                                    {canAskQuestions && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                openQuestionModal(course, lesson);
+                                            }}
+                                            className="px-4 py-2 rounded-2xl bg-forest-green-50 text-forest-green-700 border border-forest-green-100 hover:bg-forest-green-100 transition-colors text-sm font-semibold"
+                                        >
+                                            Ask expert
+                                        </button>
+                                    )}
+                                    <div className="p-3 rounded-2xl bg-gray-50 text-gray-400 group-hover:bg-forest-green-50 group-hover:text-forest-green-600 transition-all">
+                                        <FaPlay className="text-sm" />
+                                    </div>
                                 </div>
                             </div>
                         ))
@@ -366,6 +529,17 @@ const Learn = () => {
                                 >
                                     My Learning
                                 </button>
+                                {user?.role === 'beginner' && (
+                                    <button
+                                        onClick={() => setActiveTab('myquestions')}
+                                        className={`px-8 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${activeTab === 'myquestions'
+                                            ? 'bg-forest-green-600 text-white shadow-lg'
+                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                            }`}
+                                    >
+                                        My Questions
+                                    </button>
+                                )}
                             </div>
 
                             {/* Search */}
@@ -389,6 +563,51 @@ const Learn = () => {
                                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-forest-green-600 mb-4"></div>
                                 <p className="text-gray-500 font-medium">Loading courses...</p>
                             </div>
+                        ) : activeTab === 'myquestions' ? (
+                            <div className="max-w-4xl mx-auto">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-2xl font-bold text-gray-900">My Questions & Answers</h2>
+                                    <button
+                                        type="button"
+                                        onClick={fetchMyQuestions}
+                                        className="text-sm font-semibold text-forest-green-700 hover:text-forest-green-800"
+                                    >
+                                        Refresh
+                                    </button>
+                                </div>
+                                {myQuestionsLoading ? (
+                                    <div className="flex justify-center py-16">
+                                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-forest-green-600" />
+                                    </div>
+                                ) : myQuestionsError ? (
+                                    <p className="text-sm text-red-600">{myQuestionsError}</p>
+                                ) : myQuestions.length === 0 ? (
+                                    <div className="bg-white rounded-3xl border border-gray-100 p-10 text-center text-gray-500">
+                                        No questions yet. Open a lesson and click <span className="font-semibold">Ask expert</span>.
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {myQuestions.map((q) => (
+                                            <div key={q._id} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">
+                                                <p className="text-xs text-gray-500">
+                                                    {q.courseTitle || 'Course'}{q.lessonTitle ? ` • ${q.lessonTitle}` : ''}
+                                                </p>
+                                                <p className="text-gray-900 font-semibold mt-2 whitespace-pre-wrap">{q.question}</p>
+                                                <div className="mt-4 border-t border-gray-100 pt-4">
+                                                    {q.status === 'answered' && q.answer ? (
+                                                        <>
+                                                            <p className="text-xs text-forest-green-700 font-bold mb-2">Expert Answer</p>
+                                                            <p className="text-gray-800 whitespace-pre-wrap">{q.answer}</p>
+                                                        </>
+                                                    ) : (
+                                                        <p className="text-sm text-gray-500">Waiting for expert answer…</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         ) : filteredCourses.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                                 {filteredCourses.map(course => (
@@ -401,12 +620,14 @@ const Learn = () => {
                                     <FaBookmark className="text-4xl text-gray-300" />
                                 </div>
                                 <h3 className="text-xl font-bold text-gray-800 mb-2">
-                                    {activeTab === 'explore' ? 'No courses found' : 'No saved courses yet'}
+                                    {activeTab === 'explore' ? 'No courses found' : activeTab === 'mylearnings' ? 'No saved courses yet' : 'No questions yet'}
                                 </h3>
                                 <p className="text-gray-500 max-w-sm mx-auto">
                                     {activeTab === 'explore'
                                         ? 'Try adjusting your search terms or exploring different categories.'
-                                        : 'Explore courses and save them here to start your learning journey!'
+                                        : activeTab === 'mylearnings'
+                                            ? 'Explore courses and save them here to start your learning journey!'
+                                            : 'Open a lesson and ask your expert a question.'
                                     }
                                 </p>
                             </div>
@@ -424,6 +645,60 @@ const Learn = () => {
                     lesson={playingVideo}
                     onClose={() => setPlayingVideo(null)}
                 />
+            )}
+
+            {/* Ask Question Modal */}
+            {questionModal.open && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={closeQuestionModal} />
+                    <div className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-gray-100 p-6">
+                        <div className="flex items-start justify-between gap-4 mb-4">
+                            <div className="min-w-0">
+                                <h3 className="text-xl font-bold text-gray-900">Ask the expert</h3>
+                                <p className="text-sm text-gray-600 mt-1">
+                                    {questionModal.course?.title}
+                                    {questionModal.lesson?.title ? ` • ${questionModal.lesson.title}` : ''}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={closeQuestionModal}
+                                className="p-2 rounded-full hover:bg-gray-100 text-gray-600"
+                                aria-label="Close"
+                            >
+                                <FaTimes />
+                            </button>
+                        </div>
+
+                        <textarea
+                            value={questionText}
+                            onChange={(e) => setQuestionText(e.target.value)}
+                            rows={5}
+                            placeholder="Type your question about this lesson..."
+                            className="w-full border border-gray-200 rounded-2xl p-4 focus:outline-none focus:ring-2 focus:ring-forest-green-100 focus:border-forest-green-500 text-gray-800"
+                        />
+                        {questionError && <p className="text-sm text-red-600 mt-2">{questionError}</p>}
+
+                        <div className="flex justify-end gap-3 mt-5">
+                            <button
+                                type="button"
+                                onClick={closeQuestionModal}
+                                className="px-4 py-2 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-50 font-semibold"
+                                disabled={questionSubmitting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={submitQuestion}
+                                disabled={questionSubmitting}
+                                className="px-5 py-2 rounded-2xl bg-forest-green-600 text-white hover:bg-forest-green-700 font-semibold disabled:opacity-60"
+                            >
+                                {questionSubmitting ? 'Sending…' : 'Send'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

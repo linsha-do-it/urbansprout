@@ -147,6 +147,27 @@ const userSchema = new mongoose.Schema({
   completedLessons: [{
     type: String
   }],
+  // Quiz badges earned by the user (from quiz system)
+  badges: [
+    {
+      key: { type: String, required: true }, // e.g. "soil-basics-beginner"
+      label: { type: String, required: true }, // e.g. "Soil Basics – Beginner"
+      area: { type: String, required: true },
+      level: {
+        type: String,
+        enum: ['beginner', 'intermediate', 'advanced'],
+        required: true
+      },
+      quiz: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Quiz'
+      },
+      earnedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }
+  ],
   resetPasswordToken: String,
   resetPasswordExpire: Date,
   emailVerificationToken: String,

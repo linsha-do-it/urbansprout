@@ -248,4 +248,28 @@ export const coursesAPI = {
   getExpertDashboardStats: () => apiCall('/courses/expert/dashboard-stats'),
 };
 
+// Course Q&A (beginner asks, expert answers)
+export const courseQuestionsAPI = {
+  /** Beginner: ask a question about a course/lesson */
+  create: ({ courseId, lessonId, question }) =>
+    apiCall('/course-questions', {
+      method: 'POST',
+      body: JSON.stringify({ courseId, lessonId, question }),
+    }),
+
+  /** Expert: list questions directed to them */
+  getForExpert: (status) =>
+    apiCall(`/course-questions/expert${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+
+  /** Beginner: list my asked questions */
+  getMine: () => apiCall('/course-questions/my'),
+
+  /** Expert: answer a question */
+  answer: (questionId, answer) =>
+    apiCall(`/course-questions/${questionId}/answer`, {
+      method: 'PUT',
+      body: JSON.stringify({ answer }),
+    }),
+};
+
 export default apiCall;

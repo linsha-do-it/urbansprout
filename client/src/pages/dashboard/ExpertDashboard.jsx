@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { FaUsers, FaChartLine, FaBookmark, FaPlayCircle, FaChalkboardTeacher } from 'react-icons/fa';
+import { FaUsers, FaBookmark, FaPlayCircle, FaChalkboardTeacher } from 'react-icons/fa';
 import { Loader2 } from 'lucide-react';
-import { coursesAPI } from '../../utils/api';
+import { coursesAPI, courseQuestionsAPI } from '../../utils/api';
 import {
   ResponsiveContainer,
   BarChart,
@@ -23,6 +23,13 @@ const ExpertDashboard = () => {
     topCourses: [],
     recentCourses: [],
   });
+  const [qaLoading, setQaLoading] = useState(true);
+  const [qaError, setQaError] = useState('');
+  const [questions, setQuestions] = useState([]);
+  const [answerDrafts, setAnswerDrafts] = useState({});
+  const [answerSubmitting, setAnswerSubmitting] = useState({});
+  const [qaOpen, setQaOpen] = useState(false);
+  const [selectedQuestionId, setSelectedQuestionId] = useState(null);
 
   const handleLogout = () => {
     logout();
@@ -58,6 +65,54 @@ const ExpertDashboard = () => {
     loadStats();
   }, [loadStats]);
 
+  const loadQuestions = useCallback(async () => {
+    try {
+      setQaLoading(true);
+      setQaError('');
+      const res = await courseQuestionsAPI.getForExpert('open');
+      setQuestions(Array.isArray(res?.data) ? res.data : []);
+    } catch (e) {
+      console.error('Failed to load expert questions', e);
+      setQaError(e?.message || 'Failed to load questions.');
+      setQuestions([]);
+    } finally {
+      setQaLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadQuestions();
+  }, [loadQuestions]);
+
+  useEffect(() => {
+    if (!qaOpen) return;
+    if (selectedQuestionId) return;
+    if (questions.length > 0) {
+      setSelectedQuestionId(questions[0]._id);
+    }
+  }, [qaOpen, questions, selectedQuestionId]);
+
+  const submitAnswer = useCallback(
+    async (questionId) => {
+      const answer = String(answerDrafts[questionId] || '').trim();
+      if (!answer) return;
+      try {
+        setAnswerSubmitting((prev) => ({ ...prev, [questionId]: true }));
+        await courseQuestionsAPI.answer(questionId, answer);
+        setAnswerDrafts((prev) => ({ ...prev, [questionId]: '' }));
+        await loadQuestions();
+        if (selectedQuestionId === questionId) {
+          setSelectedQuestionId(null);
+        }
+      } catch (e) {
+        alert(e?.message || 'Failed to send answer.');
+      } finally {
+        setAnswerSubmitting((prev) => ({ ...prev, [questionId]: false }));
+      }
+    },
+    [answerDrafts, loadQuestions, selectedQuestionId]
+  );
+
   const chartData = useMemo(
     () =>
       (stats.topCourses || []).map((c) => ({
@@ -67,6 +122,11 @@ const ExpertDashboard = () => {
         watched: Number(c.watched || 0),
       })),
     [stats.topCourses]
+  );
+
+  const selectedQuestion = useMemo(
+    () => questions.find((q) => String(q._id) === String(selectedQuestionId)) || null,
+    [questions, selectedQuestionId]
   );
 
   return (
@@ -145,38 +205,27 @@ const ExpertDashboard = () => {
           </div>
         )}
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <button className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left">
-            <div className="flex items-center mb-4">
-              <div className="bg-forest-green-100 p-3 rounded-lg">
-                <FaChalkboardTeacher className="text-forest-green-600 text-xl" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 ml-4">Create Class</h3>
+        {/* Questions Card */}
+        <button
+          type="button"
+          onClick={() => setQaOpen(true)}
+          className="w-full bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8 hover:shadow-md hover:border-forest-green-200 transition-all text-left"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <h3 className="text-lg font-semibold text-gray-900">Questions</h3>
+              <p className="text-gray-600 text-sm mt-1">
+                Answer beginner questions about your classes.
+              </p>
             </div>
-            <p className="text-gray-600">Share your plant knowledge through lessons</p>
-          </button>
-
-          <button className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left">
-            <div className="flex items-center mb-4">
-              <div className="bg-forest-green-100 p-3 rounded-lg">
-                <FaUsers className="text-forest-green-500 text-xl" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 ml-4">Answer Questions</h3>
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-forest-green-50 text-forest-green-700 text-sm font-semibold border border-forest-green-100">
+                {qaLoading ? '…' : questions.length}
+              </span>
+              <span className="text-sm font-semibold text-forest-green-700">Open</span>
             </div>
-            <p className="text-gray-600">Help beginners with their plant care questions</p>
-          </button>
-
-          <button className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left">
-            <div className="flex items-center mb-4">
-              <div className="bg-forest-green-100 p-3 rounded-lg">
-                <FaChartLine className="text-forest-green-700 text-xl" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 ml-4">View Analytics</h3>
-            </div>
-            <p className="text-gray-600">Track your impact and engagement metrics</p>
-          </button>
-        </div>
+          </div>
+        </button>
 
         {/* Content Sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -282,6 +331,142 @@ const ExpertDashboard = () => {
             </div>
           </div>
         </div>
+
+        {/* Questions Modal */}
+        {qaOpen && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => {
+                setQaOpen(false);
+                setSelectedQuestionId(null);
+              }}
+            />
+            <div className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Questions</h3>
+                  <p className="text-xs text-gray-500">Select a question and reply.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={loadQuestions}
+                    className="text-sm font-semibold text-forest-green-700 hover:text-forest-green-800"
+                  >
+                    Refresh
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQaOpen(false);
+                      setSelectedQuestionId(null);
+                    }}
+                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-semibold"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 min-h-[420px]">
+                {/* List */}
+                <div className="border-r border-gray-100 md:col-span-1">
+                  {qaLoading ? (
+                    <div className="flex justify-center py-10">
+                      <Loader2 className="w-6 h-6 text-forest-green-600 animate-spin" />
+                    </div>
+                  ) : qaError ? (
+                    <div className="p-4">
+                      <p className="text-sm text-red-600">{qaError}</p>
+                    </div>
+                  ) : questions.length === 0 ? (
+                    <div className="p-6">
+                      <p className="text-sm text-gray-500">No open questions yet.</p>
+                    </div>
+                  ) : (
+                    <div className="max-h-[520px] overflow-auto">
+                      {questions.map((q) => {
+                        const active = String(q._id) === String(selectedQuestionId);
+                        return (
+                          <button
+                            key={q._id}
+                            type="button"
+                            onClick={() => setSelectedQuestionId(q._id)}
+                            className={`w-full text-left px-4 py-4 border-b border-gray-50 hover:bg-forest-green-50/40 transition-colors ${
+                              active ? 'bg-forest-green-50/60' : 'bg-white'
+                            }`}
+                          >
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {q.askedBy?.name || 'Beginner'}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate mt-0.5">
+                              {(q.courseTitle || 'Course') + (q.lessonTitle ? ` • ${q.lessonTitle}` : '')}
+                            </p>
+                            <p className="text-sm text-gray-700 mt-2 line-clamp-2">{q.question}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Detail */}
+                <div className="md:col-span-2 p-6">
+                  {!selectedQuestion ? (
+                    <div className="h-full flex items-center justify-center text-sm text-gray-500">
+                      Select a question to answer.
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-500">
+                        <span className="font-semibold text-gray-700">
+                          {selectedQuestion.askedBy?.name || 'Beginner'}
+                        </span>
+                        {selectedQuestion.courseTitle ? ` • ${selectedQuestion.courseTitle}` : ''}
+                        {selectedQuestion.lessonTitle ? ` • ${selectedQuestion.lessonTitle}` : ''}
+                      </p>
+                      <p className="text-gray-900 font-medium mt-3 whitespace-pre-wrap">
+                        {selectedQuestion.question}
+                      </p>
+
+                      <div className="mt-5">
+                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                          Your answer
+                        </label>
+                        <textarea
+                          rows={5}
+                          value={answerDrafts[selectedQuestion._id] || ''}
+                          onChange={(e) =>
+                            setAnswerDrafts((prev) => ({
+                              ...prev,
+                              [selectedQuestion._id]: e.target.value,
+                            }))
+                          }
+                          placeholder="Write your answer..."
+                          className="w-full border border-gray-200 rounded-xl p-4 focus:outline-none focus:ring-2 focus:ring-forest-green-100 focus:border-forest-green-500 text-sm"
+                        />
+                        <div className="flex justify-end mt-4">
+                          <button
+                            type="button"
+                            onClick={() => submitAnswer(selectedQuestion._id)}
+                            disabled={
+                              Boolean(answerSubmitting[selectedQuestion._id]) ||
+                              !String(answerDrafts[selectedQuestion._id] || '').trim()
+                            }
+                            className="px-5 py-2 rounded-xl bg-forest-green-600 text-white hover:bg-forest-green-700 text-sm font-semibold disabled:opacity-60"
+                          >
+                            {answerSubmitting[selectedQuestion._id] ? 'Sending…' : 'Send answer'}
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

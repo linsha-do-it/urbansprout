@@ -16,7 +16,7 @@ const MyCourses = () => {
     const [error, setError] = useState(null);
 
     // Form states
-    const [newCourse, setNewCourse] = useState({ title: '', description: '', image: '' });
+    const [newCourse, setNewCourse] = useState({ title: '', description: '', image: '', isCertificateCourse: false });
     const [newLesson, setNewLesson] = useState({ title: '', videoUrl: '' });
     const [lessonToEdit, setLessonToEdit] = useState(null);
     const [uploading, setUploading] = useState(false);
@@ -52,7 +52,7 @@ const MyCourses = () => {
             if (response.success) {
                 setCourses([response.data, ...courses]);
                 setShowCreateForm(false);
-                setNewCourse({ title: '', description: '', image: '' });
+                setNewCourse({ title: '', description: '', image: '', isCertificateCourse: false });
                 setUploadError('');
             }
         } catch (err) {
@@ -377,6 +377,20 @@ const MyCourses = () => {
                                         value={newCourse.description}
                                         onChange={e => setNewCourse({ ...newCourse, description: e.target.value })}
                                     />
+                                </div>
+                                <div className="mb-4">
+                                    <label className="flex items-center gap-3 text-sm font-medium text-gray-700">
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(newCourse.isCertificateCourse)}
+                                            onChange={(e) => setNewCourse((prev) => ({ ...prev, isCertificateCourse: e.target.checked }))}
+                                            className="h-4 w-4 accent-forest-green-600"
+                                        />
+                                        Mark as certificate course
+                                    </label>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Certificate courses show up in beginner Q&A under “Certificate Courses”.
+                                    </p>
                                 </div>
                                 <div className="mb-6">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Cover Image</label>

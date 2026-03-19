@@ -30,6 +30,7 @@ import AdminOrders from './pages/admin/AdminOrders'
 import AdminSettings from './pages/admin/AdminSettings'
 import InventoryInsights from './pages/admin/InventoryInsights'
 import RevenuePredictor from './pages/admin/RevenuePredictor'
+import AdminQuizzes from './pages/admin/AdminQuizzes'
 
 // Import dashboard components
 import AdminDashboard from './pages/dashboard/AdminDashboard'
@@ -52,6 +53,7 @@ import PlantDetail from './pages/PlantDetail'
 import NotificationDebug from './pages/NotificationDebug'
 import Learn from './pages/Learn'
 import MyCourses from './pages/MyCourses'
+import Quizzes from './pages/Quizzes'
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requiredRole = null, allowedRoles = [], redirectToSignup = false }) => {
@@ -186,12 +188,12 @@ const App = () => {
             </>
           } />
           <Route path="/space-planner" element={
-            <>
+            <ProtectedRoute allowedRoles={['beginner']}>
               <Navbar />
               <div className="pt-[82px]">
                 <SpacePlanner />
               </div>
-            </>
+            </ProtectedRoute>
           } />
           <Route path="/unauthorized" element={
             <>
@@ -267,6 +269,22 @@ const App = () => {
               </div>
             </ProtectedRoute>
           } />
+          <Route path="/quizzes" element={
+            <ProtectedRoute allowedRoles={['beginner']}>
+              <Navbar />
+              <div className="pt-[82px]">
+                <Quizzes />
+              </div>
+            </ProtectedRoute>
+          } />
+          <Route path="/qa" element={
+            <ProtectedRoute allowedRoles={['beginner']}>
+              <Navbar />
+              <div className="pt-[82px]">
+                <Learn />
+              </div>
+            </ProtectedRoute>
+          } />
           <Route path="/my-courses" element={
             <ProtectedRoute>
               <Navbar />
@@ -318,6 +336,13 @@ const App = () => {
             <ProtectedRoute requiredRole="admin">
               <AdminLayout>
                 <AdminOrders />
+              </AdminLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/quizzes" element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminLayout>
+                <AdminQuizzes />
               </AdminLayout>
             </ProtectedRoute>
           } />
