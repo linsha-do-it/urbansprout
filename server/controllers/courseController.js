@@ -18,6 +18,8 @@ const requireExpert = (req) => {
     }
 };
 
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 // Helper to extract image from URL if it's a website
 const getActualImage = async (url) => {
     if (!url) return '';
@@ -397,6 +399,95 @@ async function getSaveCountsByCourse(Model, courseIds) {
     return map;
 }
 
+function parseExpertAnalyticsPeriod(monthValue, yearValue, fallbackMonth, fallbackYear) {
+    const now = new Date();
+    const resolvedFallbackMonth = fallbackMonth || (now.getMonth() + 1);
+    const resolvedFallbackYear = fallbackYear || now.getFullYear();
+
+    const month = monthValue == null || monthValue === ''
+        ? resolvedFallbackMonth
+        : Number.parseInt(monthValue, 10);
+    const year = yearValue == null || yearValue === ''
+        ? resolvedFallbackYear
+        : Number.parseInt(yearValue, 10);
+
+    if (!Number.isInteger(month) || month < 1 || month > 12) {
+        throw new AppError('Month must be between 1 and 12', 400);
+    }
+
+    if (!Number.isInteger(year) || year < 2000 || year > resolvedFallbackYear + 1) {
+        throw new AppError('Year is invalid', 400);
+    }
+
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 1);
+    const yearStartDate = new Date(year, 0, 1);
+    const yearEndDate = new Date(year + 1, 0, 1);
+
+    return {
+        month,
+        year,
+        label: `${MONTH_LABELS[month - 1]} ${year}`,
+        startDate,
+        endDate,
+        yearStartDate,
+        yearEndDate
+    };
+}
+
+function buildCoursePerformance(courses, userCounts, beginnerCounts, expertCounts, vendorCounts) {
+    return courses
+        .map((course) => {
+            const key = String(course._id);
+            const lessonsCount = Array.isArray(course.lessons) ? course.lessons.length : 0;
+            const watched = (Array.isArray(course.lessons) ? course.lessons : []).reduce(
+                (sum, lesson) => sum + Number(lesson.completionCount || 0),
+                0
+            );
+            const saves =
+                Number(userCounts[key] || 0) +
+                Number(beginnerCounts[key] || 0) +
+                Number(expertCounts[key] || 0) +
+                Number(vendorCounts[key] || 0);
+
+            return {
+                id: key,
+                title: course.title,
+                image: course.image || '',
+                createdAt: course.createdAt,
+                lessonsCount,
+                saves,
+                watched,
+                engagementScore: saves + watched
+            };
+        })
+        .sort((a, b) => (b.engagementScore - a.engagementScore) || (b.saves - a.saves));
+}
+
+function summarizeCoursePerformance(courses) {
+    const summary = courses.reduce((acc, course) => {
+        acc.coursesPublished += 1;
+        acc.lessonsPublished += Number(course.lessonsCount || 0);
+        acc.totalSaves += Number(course.saves || 0);
+        acc.totalLessonCompletions += Number(course.watched || 0);
+        return acc;
+    }, {
+        coursesPublished: 0,
+        lessonsPublished: 0,
+        totalSaves: 0,
+        totalLessonCompletions: 0
+    });
+
+    summary.averageSavesPerCourse = summary.coursesPublished > 0
+        ? Number((summary.totalSaves / summary.coursesPublished).toFixed(1))
+        : 0;
+    summary.averageCompletionsPerCourse = summary.coursesPublished > 0
+        ? Number((summary.totalLessonCompletions / summary.coursesPublished).toFixed(1))
+        : 0;
+
+    return summary;
+}
+
 // @desc    Expert dashboard stats (real data)
 // @route   GET /api/courses/expert/dashboard-stats
 // @access  Private (Expert only)
@@ -493,6 +584,161 @@ const getExpertDashboardStats = asyncHandler(async (req, res, next) => {
     });
 });
 
+// @desc    Expert analytics with month/year filters
+// @route   GET /api/courses/expert/analytics
+// @access  Private (Expert only)
+const getExpertAnalytics = asyncHandler(async (req, res, next) => {
+    requireExpert(req);
+
+    const allCourses = await Course.find({ instructor: req.user._id })
+        .select('title image lessons createdAt')
+        .sort({ createdAt: -1 })
+        .lean();
+
+    const latestCourseDate = allCourses[0]?.createdAt ? new Date(allCourses[0].createdAt) : new Date();
+
+    const {
+        month,
+        year,
+        label,
+        startDate,
+        endDate,
+        yearStartDate,
+        yearEndDate
+    } = parseExpertAnalyticsPeriod(
+        req.query.month,
+        req.query.year,
+        latestCourseDate.getMonth() + 1,
+        latestCourseDate.getFullYear()
+    );
+
+    const periodCourses = allCourses.filter((course) => {
+        const createdAt = new Date(course.createdAt);
+        return createdAt >= startDate && createdAt < endDate;
+    });
+    const yearlyCourses = allCourses.filter((course) => {
+        const createdAt = new Date(course.createdAt);
+        return createdAt >= yearStartDate && createdAt < yearEndDate;
+    });
+
+    const allCourseIds = allCourses.map((course) => course._id);
+    const periodCourseIds = periodCourses.map((course) => course._id);
+    const yearlyCourseIds = yearlyCourses.map((course) => course._id);
+
+    const [
+        allUserCounts,
+        allBeginnerCounts,
+        allExpertCounts,
+        allVendorCounts,
+        periodUserCounts,
+        periodBeginnerCounts,
+        periodExpertCounts,
+        periodVendorCounts,
+        yearlyUserCounts,
+        yearlyBeginnerCounts,
+        yearlyExpertCounts,
+        yearlyVendorCounts
+    ] = await Promise.all([
+        getSaveCountsByCourse(User, allCourseIds),
+        getSaveCountsByCourse(BeginnerUser, allCourseIds),
+        getSaveCountsByCourse(ExpertUser, allCourseIds),
+        getSaveCountsByCourse(VendorUser, allCourseIds),
+        getSaveCountsByCourse(User, periodCourseIds),
+        getSaveCountsByCourse(BeginnerUser, periodCourseIds),
+        getSaveCountsByCourse(ExpertUser, periodCourseIds),
+        getSaveCountsByCourse(VendorUser, periodCourseIds),
+        getSaveCountsByCourse(User, yearlyCourseIds),
+        getSaveCountsByCourse(BeginnerUser, yearlyCourseIds),
+        getSaveCountsByCourse(ExpertUser, yearlyCourseIds),
+        getSaveCountsByCourse(VendorUser, yearlyCourseIds)
+    ]);
+
+    const allCoursePerformance = buildCoursePerformance(
+        allCourses,
+        allUserCounts,
+        allBeginnerCounts,
+        allExpertCounts,
+        allVendorCounts
+    );
+    const periodCoursePerformance = buildCoursePerformance(
+        periodCourses,
+        periodUserCounts,
+        periodBeginnerCounts,
+        periodExpertCounts,
+        periodVendorCounts
+    );
+    const summary = summarizeCoursePerformance(periodCoursePerformance);
+    const allTimeSummary = summarizeCoursePerformance(allCoursePerformance);
+
+    const monthlyBreakdownMap = new Map(
+        MONTH_LABELS.map((monthLabel, index) => [
+            index,
+            {
+                month: index + 1,
+                label: monthLabel,
+                classes: 0,
+                lessons: 0,
+                saves: 0,
+                watched: 0
+            }
+        ])
+    );
+
+    yearlyCourses.forEach((course) => {
+        const courseDate = new Date(course.createdAt);
+        const monthIndex = courseDate.getMonth();
+        const bucket = monthlyBreakdownMap.get(monthIndex);
+        const key = String(course._id);
+        const lessonsCount = Array.isArray(course.lessons) ? course.lessons.length : 0;
+        const watched = (Array.isArray(course.lessons) ? course.lessons : []).reduce(
+            (sum, lesson) => sum + Number(lesson.completionCount || 0),
+            0
+        );
+        const saves =
+            Number(yearlyUserCounts[key] || 0) +
+            Number(yearlyBeginnerCounts[key] || 0) +
+            Number(yearlyExpertCounts[key] || 0) +
+            Number(yearlyVendorCounts[key] || 0);
+
+        bucket.classes += 1;
+        bucket.lessons += lessonsCount;
+        bucket.saves += saves;
+        bucket.watched += watched;
+    });
+
+    const availableYears = Array.from(
+        new Set(allCourses.map((course) => new Date(course.createdAt).getFullYear()))
+    )
+        .filter((value) => Number.isInteger(value))
+        .sort((a, b) => b - a);
+
+    if (availableYears.length === 0) {
+        availableYears.push(new Date().getFullYear());
+    }
+
+    res.json({
+        success: true,
+        data: {
+            period: { month, year, label },
+            latestAvailablePeriod: {
+                month: latestCourseDate.getMonth() + 1,
+                year: latestCourseDate.getFullYear(),
+                label: `${MONTH_LABELS[latestCourseDate.getMonth()]} ${latestCourseDate.getFullYear()}`
+            },
+            availableYears,
+            allTimeSummary,
+            summary,
+            topPerformer: periodCoursePerformance[0] || null,
+            coursePerformance: periodCoursePerformance,
+            recentCourses: periodCoursePerformance
+                .slice()
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                .slice(0, 5),
+            monthlyBreakdown: Array.from(monthlyBreakdownMap.values())
+        }
+    });
+});
+
 module.exports = {
     uploadCourseImage,
     createCourse,
@@ -505,5 +751,6 @@ module.exports = {
     toggleSaveCourse,
     getSavedCourses,
     toggleLessonCompletion,
-    getExpertDashboardStats
+    getExpertDashboardStats,
+    getExpertAnalytics
 };

@@ -13,6 +13,10 @@ const {
   resetPassword
 } = require('../controllers/authController');
 const { protect } = require('../middlewares/auth');
+const User = require('../models/User');
+const BeginnerUser = require('../models/BeginnerUser');
+const ExpertUser = require('../models/ExpertUser');
+const VendorUser = require('../models/VendorUser');
 const admin = require('firebase-admin');
 if (!admin.apps.length) {
   try {
@@ -72,16 +76,19 @@ router.post('/check-email', async (req, res) => {
       });
     }
 
-    // Check if user exists with this email
-    const User = require('../models/User');
-    const existingUser = await User.findOne({ 
-      email: email.toLowerCase() 
-    });
+    const normalizedEmail = email.toLowerCase();
+    const existingUsers = await Promise.all([
+      BeginnerUser.findOne({ email: normalizedEmail }).select('_id'),
+      ExpertUser.findOne({ email: normalizedEmail }).select('_id'),
+      VendorUser.findOne({ email: normalizedEmail }).select('_id'),
+      User.findOne({ email: normalizedEmail }).select('_id')
+    ]);
+    const exists = existingUsers.some(Boolean);
 
     res.json({
       success: true,
-      exists: !!existingUser,
-      message: existingUser ? 'Email already registered' : 'Email available'
+      exists,
+      message: exists ? 'Email already registered' : 'Email available'
     });
 
   } catch (error) {

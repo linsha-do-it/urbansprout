@@ -1313,7 +1313,10 @@ const getUserDetails = asyncHandler(async (req, res, next) => {
     return next(new AppError('User not found', 404));
   }
   const user = await model.findById(userId)
-    .select('-password -resetPasswordToken -resetPasswordExpire -emailVerificationToken -emailVerificationExpire')
+    .select(
+      '-password -resetPasswordToken -resetPasswordExpire -emailVerificationToken -emailVerificationExpire ' +
+      '-expertApplication.credentialsFile.data -expertApplication.workEvidenceFile.data -expertApplication.idProofFile.data'
+    )
     .lean();
 
   // Get additional user activity data (Order uses 'user' ref, Blog uses authorId)

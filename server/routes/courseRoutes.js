@@ -14,7 +14,8 @@ const {
     toggleSaveCourse,
     getSavedCourses,
     toggleLessonCompletion,
-    getExpertDashboardStats
+    getExpertDashboardStats,
+    getExpertAnalytics
 } = require('../controllers/courseController');
 
 const upload = multer({
@@ -37,6 +38,7 @@ router.route('/')
 
 router.get('/my-courses', getMyCourses);
 router.get('/expert/dashboard-stats', getExpertDashboardStats);
+router.get('/expert/analytics', getExpertAnalytics);
 router.get('/saved', getSavedCourses);
 router.post('/saved/:id/save', toggleSaveCourse); // Keep this for clarity if needed, or stick to /:id/save
 router.post('/:id/save', toggleSaveCourse);

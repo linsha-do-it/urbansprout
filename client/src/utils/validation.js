@@ -4,6 +4,42 @@ export const validateEmail = (email) => {
   return emailRegex.test(email);
 };
 
+const VALID_YOUTUBE_HOSTS = ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'];
+
+export const validateYouTubeUrl = (url) => {
+  if (!url || !url.trim()) return false;
+
+  try {
+    const parsedUrl = new URL(url.trim());
+    return VALID_YOUTUBE_HOSTS.includes(parsedUrl.hostname.toLowerCase());
+  } catch (error) {
+    return false;
+  }
+};
+
+const validateExpertDocument = (document, { required = false } = {}) => {
+  const hasUpload = Boolean(document?.data);
+
+  if (!hasUpload) {
+    return required ? 'This upload is required for expert sign up' : '';
+  }
+
+  if (!document.fileName || !document.fileType || !document.fileSize) {
+    return 'Please re-upload this file';
+  }
+
+  if (document.fileSize > 5 * 1024 * 1024) {
+    return 'File must be 5 MB or smaller';
+  }
+
+  const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (!allowedTypes.includes(document.fileType)) {
+    return 'Only PDF, JPG, PNG, or WebP files are allowed';
+  }
+
+  return '';
+};
+
 // Password validation with detailed feedback
 export const validatePassword = (password) => {
   const validations = {
@@ -78,6 +114,27 @@ export const validateForm = (formData, userType) => {
     errors.confirmPassword = 'Passwords do not match';
   }
 
+  if (userType === 'expert') {
+    if (!validateYouTubeUrl(formData.youtubeChannel)) {
+      errors.youtubeChannel = 'Please enter a valid YouTube channel or profile URL';
+    }
+
+    const credentialsFileError = validateExpertDocument(formData.credentialsFile);
+    if (credentialsFileError) {
+      errors.credentialsFile = credentialsFileError;
+    }
+
+    const workEvidenceFileError = validateExpertDocument(formData.workEvidenceFile);
+    if (workEvidenceFileError) {
+      errors.workEvidenceFile = workEvidenceFileError;
+    }
+
+    const idProofFileError = validateExpertDocument(formData.idProofFile, { required: true });
+    if (idProofFileError) {
+      errors.idProofFile = idProofFileError;
+    }
+  }
+
   return {
     isValid: Object.keys(errors).length === 0,
     errors,
@@ -96,6 +153,11 @@ export const getValidationMessage = (field, value, userType) => {
     case 'email':
       if (!value) return '';
       if (!validateEmail(value)) return 'Invalid email format';
+      return '';
+
+    case 'youtubeChannel':
+      if (!value) return '';
+      if (!validateYouTubeUrl(value)) return 'Enter a valid YouTube channel or profile URL';
       return '';
 
     default:

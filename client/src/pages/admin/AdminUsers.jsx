@@ -613,6 +613,73 @@ const AdminUsers = () => {
                 </div>
               )}
 
+              {userDetails.role === 'expert' && userDetails.expertApplication && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Expert Verification</label>
+                  <div className="mt-2 space-y-3 rounded-lg border border-purple-100 bg-purple-50 p-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-purple-600">Status</p>
+                        <p className="text-sm font-medium text-gray-900">{userDetails.expertApplication.status || 'pending'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-purple-600">Submitted</p>
+                        <p className="text-sm text-gray-900">{formatDate(userDetails.expertApplication.submittedAt)}</p>
+                      </div>
+                    </div>
+
+                    {userDetails.expertApplication.youtubeChannel && (
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-purple-600">YouTube Channel</p>
+                        <a
+                          href={userDetails.expertApplication.youtubeChannel}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sm text-blue-600 hover:text-blue-800 break-all"
+                        >
+                          {userDetails.expertApplication.youtubeChannel}
+                        </a>
+                      </div>
+                    )}
+
+                    {userDetails.expertApplication.credentialsNotes && (
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-purple-600">Credentials</p>
+                        <p className="text-sm text-gray-900">{userDetails.expertApplication.credentialsNotes}</p>
+                      </div>
+                    )}
+
+                    {userDetails.expertApplication.workEvidenceNotes && (
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-purple-600">Work Evidence</p>
+                        <p className="text-sm text-gray-900">{userDetails.expertApplication.workEvidenceNotes}</p>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="rounded-md bg-white p-3 border border-purple-100">
+                        <p className="text-xs uppercase tracking-wide text-purple-600">Credential File</p>
+                        <p className="text-sm text-gray-900 break-words">
+                          {userDetails.expertApplication.credentialsFile?.fileName || 'Not uploaded'}
+                        </p>
+                      </div>
+                      <div className="rounded-md bg-white p-3 border border-purple-100">
+                        <p className="text-xs uppercase tracking-wide text-purple-600">Work Evidence File</p>
+                        <p className="text-sm text-gray-900 break-words">
+                          {userDetails.expertApplication.workEvidenceFile?.fileName || 'Not uploaded'}
+                        </p>
+                      </div>
+                      <div className="rounded-md bg-white p-3 border border-purple-100">
+                        <p className="text-xs uppercase tracking-wide text-purple-600">ID Proof File</p>
+                        <p className="text-sm text-gray-900 break-words">
+                          {userDetails.expertApplication.idProofFile?.fileName || 'Not uploaded'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {userDetails.adminNotes && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Admin Notes</label>

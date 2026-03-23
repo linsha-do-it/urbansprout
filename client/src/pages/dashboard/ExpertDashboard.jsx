@@ -1,20 +1,12 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { FaUsers, FaBookmark, FaPlayCircle, FaChalkboardTeacher } from 'react-icons/fa';
-import { Loader2 } from 'lucide-react';
+import { ArrowRight, BarChart3, Loader2 } from 'lucide-react';
 import { coursesAPI, courseQuestionsAPI } from '../../utils/api';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-} from 'recharts';
 
 const ExpertDashboard = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     classesShared: 0,
@@ -30,10 +22,6 @@ const ExpertDashboard = () => {
   const [answerSubmitting, setAnswerSubmitting] = useState({});
   const [qaOpen, setQaOpen] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState(null);
-
-  const handleLogout = () => {
-    logout();
-  };
 
   const loadStats = useCallback(async () => {
     try {
@@ -111,17 +99,6 @@ const ExpertDashboard = () => {
       }
     },
     [answerDrafts, loadQuestions, selectedQuestionId]
-  );
-
-  const chartData = useMemo(
-    () =>
-      (stats.topCourses || []).map((c) => ({
-        name: c.title?.length > 16 ? `${c.title.slice(0, 15)}…` : c.title,
-        fullName: c.title,
-        saves: Number(c.saves || 0),
-        watched: Number(c.watched || 0),
-      })),
-    [stats.topCourses]
   );
 
   const selectedQuestion = useMemo(
@@ -230,46 +207,41 @@ const ExpertDashboard = () => {
         {/* Content Sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Analytics */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">View analytics</h3>
-            <p className="text-xs text-gray-500 mb-4">Demand based on saves per class</p>
-            {loading ? (
-              <div className="flex justify-center py-10">
-                <Loader2 className="w-6 h-6 text-forest-green-600 animate-spin" />
+          <Link
+            to="/expert/analytics"
+            className="bg-white rounded-lg shadow p-6 hover:shadow-md hover:border-forest-green-200 border border-gray-100 transition-all block"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-forest-green-100 text-forest-green-700 mb-4">
+                  <BarChart3 className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">View analytics</h3>
+                <p className="text-sm text-gray-600 mb-5">
+                  Open a dedicated analytics dashboard with month and year filters, engagement charts,
+                  and class performance insights.
+                </p>
+                <div className="inline-flex items-center text-sm font-semibold text-forest-green-700">
+                  Open analytics dashboard
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </div>
               </div>
-            ) : chartData.length === 0 ? (
-              <p className="text-gray-500 text-sm py-6">
-                No analytics yet. Create and publish classes to start seeing demand.
-              </p>
-            ) : (
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 30 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis
-                      dataKey="name"
-                      tick={{ fontSize: 11 }}
-                      interval={0}
-                      angle={-25}
-                      textAnchor="end"
-                    />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip
-                      formatter={(value, name) =>
-                        name === 'saves'
-                          ? [`${value} saves`, 'Saves']
-                          : [`${value} watched`, 'Watched']
-                      }
-                      labelFormatter={(label, payload) =>
-                        payload?.[0]?.payload?.fullName || label
-                      }
-                    />
-                    <Bar dataKey="saves" radius={[6, 6, 0, 0]} fill="#16a34a" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </div>
+
+              {!loading && stats.topCourses[0] ? (
+                <div className="min-w-40 rounded-xl bg-forest-green-50 border border-forest-green-100 p-4">
+                  <p className="text-xs uppercase tracking-wide text-forest-green-700 mb-2">
+                    Top class
+                  </p>
+                  <p className="text-sm font-semibold text-gray-900 line-clamp-2">
+                    {stats.topCourses[0].title}
+                  </p>
+                  <p className="text-xs text-gray-600 mt-3">
+                    {stats.topCourses[0].saves} saves • {stats.topCourses[0].watched} completions
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          </Link>
 
           {/* Your Recent Classes */}
           <div className="bg-white rounded-lg shadow p-6 space-y-6">

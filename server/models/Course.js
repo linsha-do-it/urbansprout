@@ -61,7 +61,9 @@ const courseSchema = new mongoose.Schema({
     }
 }, {
     timestamps: true,
-    collection: 'expertcourses'  // Dedicated collection for expert-created courses (cover image stored in image field)
+    // Use the shared "courses" collection so existing expert course data,
+    // saves, and lesson completion analytics stay in sync.
+    collection: 'courses'
 });
 
 module.exports = mongoose.model('Course', courseSchema);

@@ -1,6 +1,28 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+const expertDocumentSchema = new mongoose.Schema({
+  fileName: {
+    type: String,
+    trim: true
+  },
+  fileType: {
+    type: String,
+    trim: true
+  },
+  fileSize: {
+    type: Number,
+    default: 0
+  },
+  data: {
+    type: String
+  },
+  uploadedAt: {
+    type: Date,
+    default: Date.now
+  }
+}, { _id: false });
+
 const expertUserSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -130,6 +152,34 @@ const expertUserSchema = new mongoose.Schema({
   completedLessons: [{
     type: String
   }],
+  expertApplication: {
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending'
+    },
+    credentialsNotes: {
+      type: String,
+      trim: true,
+      maxlength: [1000, 'Credential notes cannot exceed 1000 characters']
+    },
+    credentialsFile: expertDocumentSchema,
+    workEvidenceNotes: {
+      type: String,
+      trim: true,
+      maxlength: [1000, 'Work evidence notes cannot exceed 1000 characters']
+    },
+    workEvidenceFile: expertDocumentSchema,
+    youtubeChannel: {
+      type: String,
+      trim: true
+    },
+    idProofFile: expertDocumentSchema,
+    submittedAt: {
+      type: Date,
+      default: Date.now
+    }
+  },
   resetPasswordToken: String,
   resetPasswordExpire: Date,
   emailVerificationToken: String,

@@ -37,6 +37,7 @@ import AdminDashboard from './pages/dashboard/AdminDashboard'
 import BeginnerDashboard from './pages/dashboard/BeginnerDashboard'
 import ExpertDashboard from './pages/dashboard/ExpertDashboard'
 import VendorDashboard from './pages/dashboard/VendorDashboard'
+import ExpertAnalytics from './pages/expert/ExpertAnalytics'
 
 // Import vendor pages
 import VendorStorefront from './pages/vendor/VendorStorefront'
@@ -234,6 +235,14 @@ const App = () => {
               <Navbar />
               <div className="pt-[82px]">
                 <ExpertDashboard />
+              </div>
+            </ProtectedRoute>
+          } />
+          <Route path="/expert/analytics" element={
+            <ProtectedRoute allowedRoles={['expert']}>
+              <Navbar />
+              <div className="pt-[82px]">
+                <ExpertAnalytics />
               </div>
             </ProtectedRoute>
           } />

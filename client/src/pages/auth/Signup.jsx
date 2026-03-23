@@ -15,13 +15,27 @@ import {
   Heart,
   Zap,
   User,
-  ArrowLeft
+  ArrowLeft,
+  Upload,
+  FileText,
+  Shield
 } from 'lucide-react';
 import { signInWithGoogle } from '../../config/firebase';
 import { authAPI } from '../../utils/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { validateForm, validatePassword, getPasswordStrength, getValidationMessage, validateEmail } from '../../utils/validation';
+import { validateForm, validatePassword, getPasswordStrength, getValidationMessage, validateEmail, validateYouTubeUrl } from '../../utils/validation';
 import Logo from '../../components/Logo';
+
+const emptyExpertFile = () => ({
+  fileName: '',
+  fileType: '',
+  fileSize: 0,
+  data: ''
+});
+
+const EXPERT_FILE_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp';
+const MAX_EXPERT_FILE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_EXPERT_FILE_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -41,7 +55,13 @@ const Signup = () => {
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    credentialsNotes: '',
+    workEvidenceNotes: '',
+    youtubeChannel: '',
+    credentialsFile: emptyExpertFile(),
+    workEvidenceFile: emptyExpertFile(),
+    idProofFile: emptyExpertFile()
   });
   
   const [showPassword, setShowPassword] = useState(false);
@@ -49,6 +69,8 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [fieldMessages, setFieldMessages] = useState({});
+  const [fileErrors, setFileErrors] = useState({});
+  const [processingFile, setProcessingFile] = useState('');
   const [emailValidation, setEmailValidation] = useState({
     isChecking: false,
     isValid: null,
@@ -108,6 +130,23 @@ const Signup = () => {
     }
   }, []);
 
+  const readFileAsBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== 'string') {
+        reject(new Error('Unable to process file'));
+        return;
+      }
+
+      resolve(result.split(',')[1] || '');
+    };
+
+    reader.onerror = () => reject(new Error('Unable to process file'));
+    reader.readAsDataURL(file);
+  });
+
 
   // Debounced email validation
   useEffect(() => {
@@ -141,12 +180,130 @@ const Signup = () => {
     if (error) setError('');
   };
 
+  const handleExpertFileChange = async (e) => {
+    const { name, files } = e.target;
+    const file = files?.[0];
+
+    if (!file) {
+      setFormData(prev => ({ ...prev, [name]: emptyExpertFile() }));
+      setFileErrors(prev => ({ ...prev, [name]: '' }));
+      return;
+    }
+
+    if (!ALLOWED_EXPERT_FILE_TYPES.includes(file.type)) {
+      setFileErrors(prev => ({ ...prev, [name]: 'Only PDF, JPG, PNG, or WebP files are allowed' }));
+      return;
+    }
+
+    if (file.size > MAX_EXPERT_FILE_SIZE) {
+      setFileErrors(prev => ({ ...prev, [name]: 'File must be 5 MB or smaller' }));
+      return;
+    }
+
+    try {
+      setProcessingFile(name);
+      const data = await readFileAsBase64(file);
+      setFormData(prev => ({
+        ...prev,
+        [name]: {
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+          data
+        }
+      }));
+      setFileErrors(prev => ({ ...prev, [name]: '' }));
+    } catch (fileError) {
+      setFileErrors(prev => ({ ...prev, [name]: fileError.message || 'Unable to process file' }));
+      setFormData(prev => ({ ...prev, [name]: emptyExpertFile() }));
+    } finally {
+      setProcessingFile('');
+    }
+
+    if (error) setError('');
+  };
+
+  const buildExpertApplicationPayload = () => ({
+    credentialsNotes: formData.credentialsNotes.trim(),
+    workEvidenceNotes: formData.workEvidenceNotes.trim(),
+    youtubeChannel: formData.youtubeChannel.trim(),
+    ...(formData.credentialsFile.data && { credentialsFile: formData.credentialsFile }),
+    ...(formData.workEvidenceFile.data && { workEvidenceFile: formData.workEvidenceFile }),
+    ...(formData.idProofFile.data && { idProofFile: formData.idProofFile })
+  });
+
+  const renderExpertFileField = ({ label, name, helperText, required = false }) => {
+    const selectedFile = formData[name];
+    const selectedFileSize = selectedFile?.fileSize
+      ? `${(selectedFile.fileSize / (1024 * 1024)).toFixed(2)} MB`
+      : '';
+
+    return (
+      <div>
+        <label htmlFor={name} className="block text-sm font-medium text-forest-green-700 mb-2">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+        <label
+          htmlFor={name}
+          className={`flex cursor-pointer items-center justify-between rounded-xl border border-dashed px-4 py-3 transition-colors ${
+            fileErrors[name] ? 'border-red-300 bg-red-50' : 'border-forest-green-200 bg-white hover:border-forest-green-400'
+          }`}
+        >
+          <div className="flex items-center space-x-3">
+            <div className="rounded-full bg-forest-green-100 p-2">
+              <Upload className="h-4 w-4 text-forest-green-700" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">
+                {selectedFile?.fileName || 'Choose a file'}
+              </p>
+              <p className="text-xs text-gray-500">
+                {selectedFile?.fileName ? `${selectedFile.fileType || 'File'} • ${selectedFileSize}` : helperText}
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-medium text-forest-green-700">
+            {processingFile === name ? 'Processing...' : 'Browse'}
+          </span>
+        </label>
+        <input
+          id={name}
+          name={name}
+          type="file"
+          accept={EXPERT_FILE_ACCEPT}
+          onChange={handleExpertFileChange}
+          className="hidden"
+        />
+        {fileErrors[name] && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mt-2 text-sm text-red-600 flex items-center"
+          >
+            <AlertCircle className="h-4 w-4 mr-1" />
+            {fileErrors[name]}
+          </motion.p>
+        )}
+      </div>
+    );
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     const validation = validateForm(formData, role);
     if (!validation.isValid) {
-      setError('Please fix the errors below');
+      setError(Object.values(validation.errors)[0] || 'Please fix the errors below');
+      return;
+    }
+
+    if (hasFileErrors) {
+      setError('Please fix the upload errors below');
+      return;
+    }
+
+    if (processingFile) {
+      setError('Please wait for the current file to finish processing');
       return;
     }
     
@@ -155,9 +312,17 @@ const Signup = () => {
     
     try {
       const userData = {
-        ...formData,
         role: role
       };
+
+      userData.name = formData.name;
+      userData.email = formData.email;
+      userData.password = formData.password;
+      userData.confirmPassword = formData.confirmPassword;
+
+      if (role === 'expert') {
+        userData.expertApplication = buildExpertApplicationPayload();
+      }
       
       const response = await authAPI.register(userData);
       
@@ -173,6 +338,21 @@ const Signup = () => {
   };
 
   const handleGoogleSignIn = async () => {
+    if (hasFileErrors) {
+      setError('Please fix the upload errors below');
+      return;
+    }
+
+    if (processingFile) {
+      setError('Please wait for the current file to finish processing');
+      return;
+    }
+
+    if (!expertVerificationReady) {
+      setError('Please add your YouTube channel and ID proof before continuing with Google');
+      return;
+    }
+
     setLoading(true);
     setError('');
     
@@ -187,7 +367,8 @@ const Signup = () => {
         name: user.displayName,
         photoURL: user.photoURL,
         emailVerified: user.emailVerified,
-        role: role
+        role: role,
+        ...(role === 'expert' && { expertApplication: buildExpertApplicationPayload() })
       };
       
       const response = await authAPI.googleSignIn(googleData);
@@ -205,6 +386,12 @@ const Signup = () => {
 
   const passwordValidation = validatePassword(formData.password);
   const passwordStrength = getPasswordStrength(passwordValidation.score);
+  const hasFileErrors = Object.values(fileErrors).some(Boolean);
+  const expertVerificationReady = role !== 'expert' || (
+    validateYouTubeUrl(formData.youtubeChannel) &&
+    Boolean(formData.idProofFile.data) &&
+    !hasFileErrors
+  );
 
     return (
     <div className="min-h-screen bg-gradient-to-br from-forest-green-50 via-cream-100 to-forest-green-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
@@ -219,7 +406,7 @@ const Signup = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="max-w-md w-full space-y-8 relative z-10"
+        className={`${role === 'expert' ? 'max-w-2xl' : 'max-w-md'} w-full space-y-8 relative z-10`}
       >
         {/* Header */}
         <div className="text-center">
@@ -377,6 +564,116 @@ const Signup = () => {
             </div>
 
 
+              {role === 'expert' && (
+                <div className="rounded-2xl border border-forest-green-100 bg-forest-green-50/70 p-5 space-y-5">
+                  <div className="flex items-start space-x-3">
+                    <div className="rounded-full bg-white p-2 shadow-sm">
+                      <Shield className="h-5 w-5 text-forest-green-700" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-forest-green-900">Expert verification details</h3>
+                      <p className="text-sm text-forest-green-700">
+                        Upload any credentials or work proof you have, then share your YouTube channel and ID proof so the team can review your expert account.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <div className="space-y-4">
+                      <div>
+                        <label htmlFor="credentialsNotes" className="block text-sm font-medium text-forest-green-700 mb-2">
+                          Credentials, degree, license, or certificate details
+                        </label>
+                        <textarea
+                          id="credentialsNotes"
+                          name="credentialsNotes"
+                          rows={4}
+                          value={formData.credentialsNotes}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 border border-forest-green-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-forest-green-500 focus:border-transparent transition-all duration-200 hover:border-forest-green-300"
+                          placeholder="Optional: horticulture degree, agriculture certificate, nursery license, etc."
+                        />
+                      </div>
+                      {renderExpertFileField({
+                        label: 'Credential upload',
+                        name: 'credentialsFile',
+                        helperText: 'Optional. Upload PDF, JPG, PNG, or WebP up to 5 MB.'
+                      })}
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label htmlFor="workEvidenceNotes" className="block text-sm font-medium text-forest-green-700 mb-2">
+                          Work evidence, portfolio, employer, workshops, or articles
+                        </label>
+                        <textarea
+                          id="workEvidenceNotes"
+                          name="workEvidenceNotes"
+                          rows={4}
+                          value={formData.workEvidenceNotes}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 border border-forest-green-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-forest-green-500 focus:border-transparent transition-all duration-200 hover:border-forest-green-300"
+                          placeholder="Optional: nursery/employer info, portfolio link, workshops taught, published articles."
+                        />
+                      </div>
+                      {renderExpertFileField({
+                        label: 'Work evidence upload',
+                        name: 'workEvidenceFile',
+                        helperText: 'Optional. Upload PDF, JPG, PNG, or WebP up to 5 MB.'
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <div>
+                      <label htmlFor="youtubeChannel" className="block text-sm font-medium text-forest-green-700 mb-2">
+                        YouTube channel URL <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <FileText className="h-5 w-5 text-forest-green-400" />
+                        </div>
+                        <input
+                          id="youtubeChannel"
+                          name="youtubeChannel"
+                          type="url"
+                          value={formData.youtubeChannel}
+                          onChange={handleInputChange}
+                          className={`w-full pl-10 pr-3 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-forest-green-500 focus:border-transparent transition-all duration-200 ${
+                            fieldMessages.youtubeChannel && fieldMessages.youtubeChannel.includes('valid')
+                              ? 'border-red-300 bg-red-50'
+                              : 'border-forest-green-200 hover:border-forest-green-300'
+                          }`}
+                          placeholder="https://www.youtube.com/@yourchannel"
+                        />
+                      </div>
+                      {fieldMessages.youtubeChannel && (
+                        <motion.p
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="mt-1 text-sm text-red-600 flex items-center"
+                        >
+                          <AlertCircle className="h-4 w-4 mr-1" />
+                          {fieldMessages.youtubeChannel}
+                        </motion.p>
+                      )}
+                    </div>
+
+                    {renderExpertFileField({
+                      label: 'ID proof upload',
+                      name: 'idProofFile',
+                      helperText: 'Required. Upload PDF, JPG, PNG, or WebP up to 5 MB.',
+                      required: true
+                    })}
+                  </div>
+
+                  <p className="text-xs text-forest-green-700">
+                    We use these uploads only to review expert applications and keep them off the public profile.
+                  </p>
+                </div>
+              )}
+
+
               {/* Password Field */}
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-forest-green-700 mb-2">
@@ -515,7 +812,15 @@ const Signup = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               type="submit"
-              disabled={loading || !passwordValidation.isValid || emailValidation.exists === true || emailValidation.isChecking}
+              disabled={
+                loading ||
+                !passwordValidation.isValid ||
+                emailValidation.exists === true ||
+                emailValidation.isChecking ||
+                Boolean(processingFile) ||
+                hasFileErrors ||
+                !expertVerificationReady
+              }
               className="group relative w-full flex justify-center items-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-cream-100 bg-gradient-to-r from-forest-green-600 to-forest-green-700 hover:from-forest-green-700 hover:to-forest-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-forest-green-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
             >
             {loading ? (
@@ -547,7 +852,7 @@ const Signup = () => {
               whileTap={{ scale: 0.98 }}
               type="button"
               onClick={handleGoogleSignIn}
-              disabled={loading}
+              disabled={loading || Boolean(processingFile) || hasFileErrors || !expertVerificationReady}
               className="w-full flex justify-center items-center py-3 px-4 border border-forest-green-300 rounded-xl shadow-sm text-sm font-medium text-forest-green-700 bg-white hover:bg-forest-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-forest-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             >
               <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">

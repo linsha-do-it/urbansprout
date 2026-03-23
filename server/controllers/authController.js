@@ -61,11 +61,114 @@ const findUserById = async (userId) => {
   return { user: null, model: null };
 };
 
+const ALLOWED_EXPERT_DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const MAX_EXPERT_DOCUMENT_SIZE = 5 * 1024 * 1024;
+
+const trimOptionalString = (value) => (
+  typeof value === 'string' ? value.trim() : ''
+);
+
+const isValidYouTubeUrl = (url) => {
+  try {
+    const parsedUrl = new URL(url);
+    const validHosts = ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'];
+    return validHosts.includes(parsedUrl.hostname.toLowerCase());
+  } catch (error) {
+    return false;
+  }
+};
+
+const normalizeExpertDocument = (document, fieldLabel) => {
+  if (!document || typeof document !== 'object') {
+    return undefined;
+  }
+
+  const fileName = trimOptionalString(document.fileName);
+  const fileType = trimOptionalString(document.fileType);
+  const data = trimOptionalString(document.data);
+  const fileSize = Number(document.fileSize) || 0;
+
+  if (!fileName && !fileType && !data && !fileSize) {
+    return undefined;
+  }
+
+  if (!fileName || !fileType || !data || !fileSize) {
+    throw new AppError(`${fieldLabel} upload is incomplete`, 400);
+  }
+
+  if (!ALLOWED_EXPERT_DOCUMENT_TYPES.includes(fileType)) {
+    throw new AppError(`${fieldLabel} must be a PDF, JPG, PNG, or WebP file`, 400);
+  }
+
+  if (fileSize > MAX_EXPERT_DOCUMENT_SIZE) {
+    throw new AppError(`${fieldLabel} must be 5 MB or smaller`, 400);
+  }
+
+  return {
+    fileName,
+    fileType,
+    fileSize,
+    data,
+    uploadedAt: new Date()
+  };
+};
+
+const extractExpertApplication = (expertApplication = {}, { requireMandatoryFields = false } = {}) => {
+  if (!expertApplication || typeof expertApplication !== 'object') {
+    if (requireMandatoryFields) {
+      throw new AppError('Expert verification details are required', 400);
+    }
+
+    return undefined;
+  }
+
+  const youtubeChannel = trimOptionalString(expertApplication.youtubeChannel);
+  const credentialsNotes = trimOptionalString(expertApplication.credentialsNotes);
+  const workEvidenceNotes = trimOptionalString(expertApplication.workEvidenceNotes);
+  const credentialsFile = normalizeExpertDocument(expertApplication.credentialsFile, 'Credential');
+  const workEvidenceFile = normalizeExpertDocument(expertApplication.workEvidenceFile, 'Work evidence');
+  const idProofFile = normalizeExpertDocument(expertApplication.idProofFile, 'ID proof');
+
+  if (youtubeChannel && !isValidYouTubeUrl(youtubeChannel)) {
+    throw new AppError('A valid YouTube channel URL is required for expert signup', 400);
+  }
+
+  if (requireMandatoryFields && !youtubeChannel) {
+    throw new AppError('YouTube channel is required for expert signup', 400);
+  }
+
+  if (requireMandatoryFields && !idProofFile) {
+    throw new AppError('ID proof is required for expert signup', 400);
+  }
+
+  if (
+    !youtubeChannel &&
+    !credentialsNotes &&
+    !credentialsFile &&
+    !workEvidenceNotes &&
+    !workEvidenceFile &&
+    !idProofFile
+  ) {
+    return undefined;
+  }
+
+  return {
+    status: 'pending',
+    ...(credentialsNotes && { credentialsNotes }),
+    ...(credentialsFile && { credentialsFile }),
+    ...(workEvidenceNotes && { workEvidenceNotes }),
+    ...(workEvidenceFile && { workEvidenceFile }),
+    ...(youtubeChannel && { youtubeChannel }),
+    ...(idProofFile && { idProofFile }),
+    submittedAt: new Date()
+  };
+};
+
 // @desc    Register new user
 // @route   POST /api/auth/register
 // @access  Public
 const register = asyncHandler(async (req, res, next) => {
-  const { name, username, email, password, role = 'beginner' } = req.body;
+  const { name, username, email, password, role = 'beginner', expertApplication } = req.body;
 
   // Validate required fields
   if (!email) {
@@ -119,6 +222,10 @@ const register = asyncHandler(async (req, res, next) => {
   // Add username only if provided
   if (username) {
     userData.username = username.toLowerCase().trim();
+  }
+
+  if (role === 'expert') {
+    userData.expertApplication = extractExpertApplication(expertApplication, { requireMandatoryFields: true });
   }
 
   // Create user in the appropriate collection
@@ -563,7 +670,7 @@ const logout = asyncHandler(async (req, res) => {
 // @route   POST /api/auth/google
 // @access  Public
 const googleSignIn = asyncHandler(async (req, res, next) => {
-  const { uid, email, name, photoURL, emailVerified, role = 'beginner' } = req.body;
+  const { uid, email, name, photoURL, emailVerified, role = 'beginner', expertApplication } = req.body;
 
   if (!uid || !email) {
     return next(new AppError('Google authentication data is incomplete', 400));
@@ -627,7 +734,10 @@ const googleSignIn = asyncHandler(async (req, res, next) => {
     role: userRole,
     avatar: photoURL,
     emailVerified: emailVerified || false,
-    password: 'google_auth_' + uid // Placeholder password for Google users
+    password: 'google_auth_' + uid, // Placeholder password for Google users
+    ...(userRole === 'expert' && {
+      expertApplication: extractExpertApplication(expertApplication, { requireMandatoryFields: true })
+    })
   });
 
   // Generate token

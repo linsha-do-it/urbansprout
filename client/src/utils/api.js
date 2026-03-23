@@ -246,6 +246,13 @@ export const coursesAPI = {
   },
   /** Expert dashboard stats (real data) */
   getExpertDashboardStats: () => apiCall('/courses/expert/dashboard-stats'),
+  getExpertAnalytics: ({ month, year } = {}) => {
+    const params = new URLSearchParams();
+    if (month) params.set('month', String(month));
+    if (year) params.set('year', String(year));
+    const query = params.toString();
+    return apiCall(`/courses/expert/analytics${query ? `?${query}` : ''}`);
+  },
 };
 
 // Course Q&A (beginner asks, expert answers)

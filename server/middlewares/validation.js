@@ -6,6 +6,32 @@ const validateEmail = (email) => {
   return emailRegex.test(email);
 };
 
+const validateYouTubeUrl = (url) => {
+  try {
+    const parsedUrl = new URL(url);
+    const validHosts = ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'];
+    return validHosts.includes(parsedUrl.hostname.toLowerCase());
+  } catch (error) {
+    return false;
+  }
+};
+
+const validateExpertDocument = (document) => {
+  if (!document || typeof document !== 'object') return false;
+
+  const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  const fileSize = Number(document.fileSize) || 0;
+
+  return Boolean(
+    document.fileName &&
+    document.fileType &&
+    document.data &&
+    fileSize > 0 &&
+    fileSize <= 5 * 1024 * 1024 &&
+    allowedTypes.includes(document.fileType)
+  );
+};
+
 // Validate password strength
 const validatePassword = (password) => {
   // At least 8 characters, contains uppercase, lowercase, number, and special character
@@ -20,7 +46,7 @@ const validatePassword = (password) => {
 
 // Validate registration data
 const validateRegistration = (req, res, next) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, password, role, expertApplication } = req.body;
 
   // Check required fields
   if (!name || !email || !password) {
@@ -46,6 +72,28 @@ const validateRegistration = (req, res, next) => {
   const validRoles = ['beginner', 'expert', 'vendor'];
   if (role && !validRoles.includes(role)) {
     return next(new AppError('Invalid role specified', 400));
+  }
+
+  if (role === 'expert') {
+    if (!expertApplication || typeof expertApplication !== 'object') {
+      return next(new AppError('Expert verification details are required', 400));
+    }
+
+    if (!expertApplication.youtubeChannel || !validateYouTubeUrl(expertApplication.youtubeChannel)) {
+      return next(new AppError('A valid YouTube channel URL is required for expert signup', 400));
+    }
+
+    if (!validateExpertDocument(expertApplication.idProofFile)) {
+      return next(new AppError('A valid ID proof upload is required for expert signup', 400));
+    }
+
+    if (expertApplication.credentialsFile && !validateExpertDocument(expertApplication.credentialsFile)) {
+      return next(new AppError('Credential upload must be PDF, JPG, PNG, or WebP and 5 MB or smaller', 400));
+    }
+
+    if (expertApplication.workEvidenceFile && !validateExpertDocument(expertApplication.workEvidenceFile)) {
+      return next(new AppError('Work evidence upload must be PDF, JPG, PNG, or WebP and 5 MB or smaller', 400));
+    }
   }
 
   next();
