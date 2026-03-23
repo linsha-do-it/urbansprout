@@ -179,6 +179,22 @@ app.put('/api/vendor/orders/:id/status', protect, updateVendorOrderStatus);
 app.patch('/api/vendor/orders/:id/status', protect, updateVendorOrderStatus);
 app.use('/api/vendor', vendorRoutes);
 
+// Backend-only root routes for hosting platforms and manual checks
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'UrbanSprout Backend API is running',
+    docs: {
+      health: '/api/health',
+      test: '/api/test'
+    }
+  });
+});
+
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
